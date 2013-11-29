@@ -1,0 +1,82 @@
+ADB Intuos notes.
+
+Identification word seems to be the same format as for the Ultrapads - .. .. xx xx yy yy .. ..
+
+Identifiable by having 00 07 as the last two bytes, and by being set to handler 6a
+
+Origin appears to be top left (makes sense).  
+
+We get a continuous stream of packets even if the tool stays stationary.  
+
+Stream starts with 2 packet that are *always* 7 bytes followed by (if there's time, a packet of) 8 bytes, and is always of the form 
+
+80 82 x9 91 01 4f e0
+Ax xx xx xx xx xx xx xx
+
+The first packet seems to be an "in proximity" tool indicator.  With the standard stylus, the "x" is 0x2 when we're dealing with the tip, 0xa when we're dealing with the eraser.  Pressure, tilt or buttons don't seem to change it.
+
+Breakdown:
+
+80 TT T9 91 01 4f e0
+
+TTT is Tool ID, as follows:
+
+TTT & 0xFF7 == 0x822 : Standard Stylus
+TTT & 0xFF7 == 0x812 : Inking Stylus
+TTT & 0xFF7 == 0x832 : Stroke Stylus
+TTT & 0xFF7 == 0x842 : Grip Stylus
+TTT & 0xFF7 == 0x912 : Airbrush
+TTT & 0xFF7 == 0x094 : 4D Mouse
+TTT & 0xFF7 == 0x096 : Lens Cursor
+
+TTT & 0x008 == 0x008 : Tool inverted (eraser)
+
+To get a more general tool type, 
+
+TTT & 0xf06 == 0x802 : Stylus
+TTT & 0xf06 == 0x902 : Airbrush
+TTT & 0xf06 == 0x004 : Mouse
+TTT & 0xF06 == 0x006 : Puck
+
+The second packet appears to encode the "starting point" location.  
+
+Breakdown:
+
+AB XX XX YY YY nn nn nn
+
+XXXX = x location
+YYYY = y location
+
+B is related to buttons. 
+
+0x8 = No buttons
+0xA = Side button 1 pressed on entry
+0xC = Side button 2 pressed on entry
+
+Hypothesis :
+
+Pressure is 1024 levels for all tools (and for scrollwheels).  Tilt is +-60 degrees. This can be encoded in 3 bytes. 
+
+From entry bytes
+00 63 b0 : 0000000001 1000111 0110000 : pen forwards
+00 e3 c9 : 0000000011 1000111 1001001 : pen forwards
+00 dc b0 : 0000000011 0111001 0110000 : pen backwards
+00 63 af : 0000000001 1000111 0101111 : pen backwards
+00 58 47 : 0000000001 0110000 1000111 : pen left
+00 58 40 : 0000000001 0110000 1000000 : pen left
+00 18 47 : 0000000000 0110000 1000111 : pen left
+01 18 47 : 0000000100 0110000 1000111 : pen right
+01 23 67 : 0000000100 1000110 1100111 : pen right
+00 58 40 : 0000000001 0110000 1000000 : pen right 
+
+last 3 bytes are not naive encoding of tilt and pressure, although the first 12 bits looks a lot like naive pressure encoding.
+
+Stream continues with 3  and occasionally 6 byte packets, format unknown, and occasional 8 byte packets of the form 
+
+Ax xx xx xx xx xx xx xx
+
+Stream ends with any packet whose last 2 bytes are FE 00 (usually simply 2 bytes, but sometimes 4 bytes with "extra" content first)
+
+
+
+
