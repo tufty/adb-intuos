@@ -20,15 +20,22 @@
 (define (extract/extend v start stop)
   (extend (extract v start stop) (- stop start)))
 
-(define (number->binary-string x w)
-  (let loop ([bit (- w 1)] [result ""])
-    (cond
-     [(< bit 0) result]
-     [(bitwise-bit-set? x bit)
-      (loop (- bit 1) (string-append result "1"))]
-     [else 
-      (loop (- bit 1) (string-append result "0"))])))
+(define (bits-fold n-bits width fn acc value)
+  (let loop ([lo 0] [hi n-bits] [acc acc])
+    (if (>= lo width)
+        acc
+        (loop hi (+ hi n-bits) (fn (extract value lo hi) acc)))))
 
+(define (number->binary-string x w)
+  (bits-fold 1 w
+             (lambda (x acc) (string-append (number->string x 2) acc))
+             "" x))
+
+(define (number->hex-string x w)
+  (bits-fold 4 w
+             (lambda (x acc) (string-append (number->string x 16) acc))
+             "" x))
+ 
 (define (proximity v)
   (let ([tool (extract v 36 48)])
     (display (format "~a in Proximity\n"
