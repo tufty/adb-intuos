@@ -38,7 +38,9 @@ TTT & 0xf06 == 0x902 : Airbrush
 TTT & 0xf06 == 0x004 : Mouse
 TTT & 0xF06 == 0x006 : Puck
 
-The second packet appears to encode the "starting point" location.  
+The trailing bytes don't change for my tablet, but are different for Bernard's.  Tablet ID, maybe.
+
+The second packet encodes the "starting point" location.  
 
 Breakdown:
 
@@ -47,35 +49,53 @@ AB XX XX YY YY nn nn nn
 XXXX = x location
 YYYY = y location
 
-B is related to buttons. 
+Resolution for 0608-A is 4f60 - 3f70
 
-0x8 = No buttons
-0xA = Side button 1 pressed on entry
-0xC = Side button 2 pressed on entry
+B is related to buttons, and only active for tip proximity (buttons not detected for eraser)
+
+0bx000 = No buttons
+0bx010 = Side button 1 pressed on entry
+0bx100 = Side button 2 pressed on entry
+
+Top bit is either set or not, doesn't seem consistent with a particular button state.
 
 Hypothesis :
 
 Pressure is 1024 levels for all tools (and for scrollwheels).  Tilt is +-60 degrees. This can be encoded in 3 bytes. 
 
-From entry bytes
-00 63 b0 : 0000000001 1000111 0110000 : pen forwards
-00 e3 c9 : 0000000011 1000111 1001001 : pen forwards
-00 dc b0 : 0000000011 0111001 0110000 : pen backwards
-00 63 af : 0000000001 1000111 0101111 : pen backwards
-00 58 47 : 0000000001 0110000 1000111 : pen left
-00 58 40 : 0000000001 0110000 1000000 : pen left
-00 18 47 : 0000000000 0110000 1000111 : pen left
-01 18 47 : 0000000100 0110000 1000111 : pen right
-01 23 67 : 0000000100 1000110 1100111 : pen right
-00 58 40 : 0000000001 0110000 1000000 : pen right 
+First 10 bits appear to be pressure, naively encoded.
 
-last 3 bytes are not naive encoding of tilt and pressure, although the first 12 bits looks a lot like naive pressure encoding.
+Next 7 bits x axis tilt.  zero -> maximum left, 7f -> maximum right
+Next 7 bits y axis tilt.  zero -> maximum away from user, 7f -> maximum towards
 
-Stream continues with 3  and occasionally 6 byte packets, format unknown, and occasional 8 byte packets of the form 
+encoding of last 3 bytes of 8 byte message
+pppppppp ppxxxxxx xyyyyyyy
+
+
+Stream continues with 3 and 6 byte packets, format unknown, and occasional 8 byte packets of the form 
 
 Ax xx xx xx xx xx xx xx
 
-Stream ends with any packet whose last 2 bytes are FE 00 (usually simply 2 bytes, but sometimes 4 bytes with "extra" content first)
+These 8 byte packets appear to be of the same form as the initial entry packets. They are definitely triggered by changes of button state, but not pressure.
+
+Hypothesis : 3 and 6 byte packets deal with most common changes in pointing device state - location, pressure and tilt. "uncommon" changes, i.e. button state changes, necessitate a "full" packet.
+
+3 byte packets.
+
+Bit 21 appears to correspond to a leftwards stroke.  Sign of X delta?
+Bit 16 appears to correspond to upwards stroke.  Sign of Y delta?
+- bits 12-16 Y delta?
+- bits 17-21 X delta?
+
+bits 0-3 y tilt delta ?
+bits 4-7 x tilt delta ?
+bits 8-11 pressure delta ?
+
+6 byte packets
+
+Appear to be simply a pair of 3 byte packets.
+
+Stream ends with any packet whose last 2 bytes are FE 00 (usually simply 2 bytes, but sometimes 5 or 8 bytes with a 3 or  6 byte "extra" content packet first)
 
 
 
