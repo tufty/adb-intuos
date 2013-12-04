@@ -78,6 +78,8 @@ Ax xx xx xx xx xx xx xx
 
 These 8 byte packets appear to be of the same form as the initial entry packets. They are definitely triggered by changes of button state, but not pressure.
 
+There are occasionally other 8 byte packets *not* starting with 0xa.  These appear to be triggered at the edges of the digitizer area if we go slowly enough.  Haven't looked into what they contain yet.
+
 Hypothesis : 3 and 6 byte packets deal with most common changes in pointing device state - location, pressure and tilt. "uncommon" changes, i.e. button state changes, necessitate a "full" packet.
 
 3 byte packets.
@@ -91,9 +93,28 @@ bits 0-3 y tilt delta ?
 bits 4-7 x tilt delta ?
 bits 8-11 pressure delta ?
 
+Are x and y "deltas" 2's complement, or sign + data?  *very* slow movement in the "negative" direction results in teh "sign" bit being set, and low values in the lsbs.  If we were dealing with 2's  or 1's complement, we'd expect to see lots of 0b11111 fields.  I postulate sign + some other coding.
+
+Is what I'm assuming as pressure data instead a pair of multiplier / shift indicators for co-ordinates?  slow pen-up passes produce zeros here, fast ones put data in.  Sometimes.  I'm not sure it's pressure.
+
+Some kind of delta modulation seems likely.
+
 6 byte packets
 
-Appear to be simply a pair of 3 byte packets.
+Appear to be simply a pair of 3 byte packets.  There is scaling involved, however, as simply adding the values doesn't get a correct result.  multiplications of one or other packet by a constant power of 2 (to get a constant-scaled 8 bit delta) doesn't work either.
+
+signs are consistent for first and second "packets" within a 6 byte packet.  For a right-left swipe, all x "deltas" are -ve, for example
+
+Stream appears to consist of a number of 6 byte packets, with 3 byte packets every now and then (1 per 3-6 packets in normal circumstances).  
+
+Hypothesis : 3 byte packets are "error correction" packets.
+Against : eg on a left-right stroke, we might expect to see 3 byte packets with a -ve x delta when we "overshoot".  Haven't seen any of these.
+For : If not, why bother with the 6 and 3 byte packet mix? Wacom couldn't physically get 200 samples/sec with ADB, why bother encoding 2 samples in one 6 byte packet in order to "fake" it? Nobody sees the samples, anyway, unless the driver is extrapolating time from the packets, which seems unlikely.
+
+If they *are* error correction packets, they should be triggered by a threshold on the samples we're sending.  Can't see the original samples, though : cannot test. Can't see anything relevant in the 6-byte packets either. Have looked for (for example) cumulative bottom 2 bits per axis in 6-byte packets exceeds threshold (16, 32, etc) but found nothing concrete.
+
+If the 6 byte packets are simply 2x3 byte packets, we're almost certainly looking at some sort of adaptive delta encoding.
+
 
 Stream ends with any packet whose last 2 bytes are FE 00 (usually simply 2 bytes, but sometimes 5 or 8 bytes with a 3 or  6 byte "extra" content packet first)
 

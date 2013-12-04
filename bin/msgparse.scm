@@ -1,4 +1,4 @@
-#!/usr/local/bin/ypsilon
+#!/usr/bin/env ypsilon
 (import (pregexp))
 
 (define stdin (current-input-port))
@@ -84,32 +84,35 @@
                      (number->binary-string dp 4)
                      (number->binary-string dh 4)
                      (number->binary-string dv 4)))
-    (display (format " | ~a ~a ~a ~a ~a\n"
+#;    (display (format " | ~a ~a ~a ~a ~a\n"
                      (extend dx 5) (extend dy 5) (extend dp 4) (extend dh 4) (extend dv 4)))
-    
+    (newline)
     (if *in-proximity*
         (begin
         (set! *v* (+ *v* (extend dv 4)))
         (set! *h* (+ *h* (extend dh 4)))
         (set! *p* (+ *p* (extend dp 4)))
-        (set! *y* (+ *y* (extend dy 5)))
+        (set! *y* (+ *y* (bitwise-arithmetic-shift-left (extend dy 5) 0)))
         (set! *x* (+ *x* (extend dx 5)))))))
 
 (define (six-packet v)
-  (define (modify v1 v2 width)
-    (+ (extend (* v1 16) width) (extend v2 width)))
   #;(define (modify v1 v2 width)
-    (+ (* (extend v1 width) (bitwise-arithmetic-shift-left 1 width)) (extend v2 width)))
+    (+ (extend (* v1 16) width) (extend v2 width)))
+#;  (define (modify v1 v2 width)
+    (+ (bitwise-arithmetic-shift-left (extend v1 width) 7)
+       (bitwise-arithmetic-shift-left (extend v2 width) 7)))
+  (define (modify v1 v2 width)
+    (* (extend v2 width) (abs (extend v1 width))))
   ;; #;  (define (modify v1 v2 width)
   ;; (+ (* (extend v2 width) (bitwise-arithmetic-shift-left 1 width)) (extend v1 width)))
   ;; #;  (define (modify v1 v2 width)
   ;; (+ (extend v1 width) (extend v2 width)))
   ;; #;  (define (modify v1 v2 width)
   ;; (* (extend v2 width) (abs (extend v1 width))))
-  (three-packet (extract v 24 48))
-  (three-packet (extract v 0 24))
+;;  (three-packet (extract v 24 48))
+;;  (three-packet (extract v 0 24))
 
-#;  (let ([dv1 (extract v 0 4)]
+  (let ([dv1 (extract v 0 4)]
         [dh1 (extract v 4 8)]
         [dp1 (extract v 8 12)]
         [dy1 (extract v 12 17)]
@@ -145,6 +148,7 @@
   (set! *in-proximity* #f)
   (display "Out of proximity\n"))
 
+        
 (let loop ([packet (get-line stdin)])
   (if (eof-object? packet) #t
       (begin 
