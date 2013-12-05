@@ -1,0 +1,3 @@
+The ADB portion of this code was hacked wholesale from Bernard Poulin's "waxbee" project (http://code.google.com/p/waxbee) and then brutally mutilated by Simon Stapleton.  Teensy usb-serial code from pjrc.com  
+
+Bugs are probably mine.

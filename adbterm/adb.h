@@ -33,5 +33,4 @@ void initiateAdbTransfer(AdbPacket* adbPacket, void (*done_callback)(uint8_t err
 #define ADB_COMMAND_LISTEN 	2
 #define ADB_COMMAND_TALK 	3
 
-
 #endif /* ADB_CODEC_H_ */

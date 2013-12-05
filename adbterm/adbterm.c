@@ -1,6 +1,5 @@
-/* Simple example for Teensy USB Development Board
- * http://www.pjrc.com/teensy/
- * Copyright (c) 2008 PJRC.COM, LLC
+/* Nasty hacky serial->adb converter
+ * Copyright (c) 2013 Simon Stapleton, portions (c) 2008 PJRC.COM, LTD
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,17 +37,21 @@
 // Nasty globals
 bool binary_output = true;
 bool hex_output = true;
+bool adb_command_just_finished = false;
+bool adb_command_queued = false;
 void (*callback)(uint8_t) = 0;
 AdbPacket the_packet;
 uint8_t adb_command = ADB_COMMAND_TALK;
 uint8_t adb_register = 0;
 uint8_t adb_address = 4;
-
-
+uint8_t n_adb_bytes = 0;
+uint8_t adb_bytes[8] = {0,0,0,0,0,0,0,0};
 
 void send_str(const char *s);
 uint8_t recv_str(char *buf, uint8_t size);
 void parse_and_execute_command(const char *buf, uint8_t num);
+void dump_adb_packet(void);
+char itoh (uint8_t i);
 
 // Basic command interpreter for controlling port pins
 int main(void)
@@ -85,11 +88,38 @@ int main(void)
 
     // and then listen for commands and process them
     while (1) {
-      send_str(PSTR("> "));
-      n = recv_str(buf, sizeof(buf));
-      if (n == 255) break;
-      send_str(PSTR("\r\n"));
-      parse_and_execute_command(buf, n);
+      if (adb_command_just_finished) {
+	adb_command_just_finished = false;
+	if (the_packet.datalen > 0 || !adb_command_queued)
+	  dump_adb_packet();
+      }
+      
+       if (adb_command_queued && usb_serial_available() == 0) {
+	uint8_t i = 0;
+
+	adb_command_queued = false;
+
+	the_packet.datalen = n_adb_bytes;
+
+	for (i = 0; i < n_adb_bytes; i++) {
+	  the_packet.data[i] = adb_bytes[i];
+	}
+	for (/**/; i < 8; i++) {
+	  the_packet.data[i] = 0;
+	}
+	the_packet.command = adb_command;
+	the_packet.address = adb_address;
+	the_packet.parameter = adb_register;
+  
+	initiateAdbTransfer(&the_packet, callback);
+	_delay_ms(8);
+      } else {
+	send_str(PSTR("> "));
+	n = recv_str(buf, sizeof(buf));
+	if (n == 255) break;
+	send_str(PSTR("\r\n"));
+	parse_and_execute_command(buf, n);
+      }
     }
   }
 }
@@ -198,26 +228,12 @@ void dump_adb_packet() {
 
 
 void single_command_callback(uint8_t errorCode) {
-  dump_adb_packet();
+  adb_command_just_finished = true;
 }
 
 void poll_callback(uint8_t errorCode) {
-  dump_adb_packet();
-
-  the_packet.datalen = 0;
-  the_packet.data[0] = 0;
-  the_packet.data[1] = 0;
-  the_packet.data[2] = 0;
-  the_packet.data[3] = 0;
-  the_packet.data[4] = 0;
-  the_packet.data[5] = 0;
-  the_packet.data[6] = 0;
-  the_packet.data[7] = 0;
-  the_packet.command = adb_command;
-  the_packet.address = adb_address;
-  the_packet.parameter = adb_register;
-  
-  initiateAdbTransfer(&the_packet, callback);
+  adb_command_just_finished = true;
+  adb_command_queued = true;
 }
 
 
@@ -227,16 +243,8 @@ void parse_and_execute_command(const char *buf, uint8_t num)
 {
   callback = &single_command_callback;
 
-  the_packet.datalen = 0;
-  the_packet.data[0] = 0;
-  the_packet.data[1] = 0;
-  the_packet.data[2] = 0;
-  the_packet.data[3] = 0;
-  the_packet.data[4] = 0;
-  the_packet.data[5] = 0;
-  the_packet.data[6] = 0;
-  the_packet.data[7] = 0;
-  the_packet.headerRawByte = 0;
+  n_adb_bytes = 0;
+  for (int i = 0; i < 8; i++) adb_bytes[i] = 0;
 
   char* the_char = (char *)buf;
 
@@ -279,15 +287,15 @@ void parse_and_execute_command(const char *buf, uint8_t num)
   if ((*the_char = ':') && (the_char != buf + num)) {
     the_char ++;
     while (the_char < buf + num) {
-      the_packet.datalen = (buf + num - the_char) >> 1;
-      the_packet.data[7] = (the_packet.data[7] << 4) | (the_packet.data[6] >> 4);
-      the_packet.data[7] = (the_packet.data[6] << 4) | (the_packet.data[5] >> 4);
-      the_packet.data[7] = (the_packet.data[5] << 4) | (the_packet.data[4] >> 4);
-      the_packet.data[7] = (the_packet.data[4] << 4) | (the_packet.data[3] >> 4);
-      the_packet.data[7] = (the_packet.data[3] << 4) | (the_packet.data[2] >> 4);
-      the_packet.data[7] = (the_packet.data[2] << 4) | (the_packet.data[1] >> 4);
-      the_packet.data[7] = (the_packet.data[1] << 4) | (the_packet.data[0] >> 4);
-      the_packet.data[7] = (the_packet.data[0] << 4) | htoi(*the_char);
+      n_adb_bytes = (buf + num - the_char) >> 1;
+      adb_bytes[7] = (adb_bytes[7] << 4) | (adb_bytes[6] >> 4);
+      adb_bytes[7] = (adb_bytes[6] << 4) | (adb_bytes[5] >> 4);
+      adb_bytes[7] = (adb_bytes[5] << 4) | (adb_bytes[4] >> 4);
+      adb_bytes[7] = (adb_bytes[4] << 4) | (adb_bytes[3] >> 4);
+      adb_bytes[7] = (adb_bytes[3] << 4) | (adb_bytes[2] >> 4);
+      adb_bytes[7] = (adb_bytes[2] << 4) | (adb_bytes[1] >> 4);
+      adb_bytes[7] = (adb_bytes[1] << 4) | (adb_bytes[0] >> 4);
+      adb_bytes[7] = (adb_bytes[0] << 4) | htoi(*the_char);
       the_char ++;
     }
   }
@@ -296,7 +304,7 @@ void parse_and_execute_command(const char *buf, uint8_t num)
   the_packet.address = adb_address;
   the_packet.parameter = adb_register;
 
-  initiateAdbTransfer(&the_packet, callback);
+  adb_command_queued = true;
 }
 
 
