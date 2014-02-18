@@ -93,7 +93,9 @@ bits 0-3 y tilt delta ?
 bits 4-7 x tilt delta ?
 bits 8-11 pressure delta ?
 
-Are x and y "deltas" 2's complement, or sign + data?  *very* slow movement in the "negative" direction results in teh "sign" bit being set, and low values in the lsbs.  If we were dealing with 2's  or 1's complement, we'd expect to see lots of 0b11111 fields.  I postulate sign + some other coding.
+Are x and y "deltas" 2's complement, or sign + data?  *very* slow movement in the "negative" direction results in the "sign" bit being set, and low values in the lsbs.  If we were dealing with 2's  or 1's complement, we'd expect to see lots of 0b11111 fields.  I postulate sign + some other coding.
+
+..xxxxxy yyyy.. ........
 
 Is what I'm assuming as pressure data instead a pair of multiplier / shift indicators for co-ordinates?  slow pen-up passes produce zeros here, fast ones put data in.  Sometimes.  I'm not sure it's pressure.
 
@@ -115,6 +117,7 @@ If they *are* error correction packets, they should be triggered by a threshold 
 
 If the 6 byte packets are simply 2x3 byte packets, we're almost certainly looking at some sort of adaptive delta encoding.
 
+** Well, Bernard got his o-scope out, and it appears that the 6 byte packets are simply 2 3 byte packets munged together in order to get the advertised 200pps (and they *do* hit that target, seems like Wacom care(d) about truth in advertising...
 
 Stream ends with any packet whose last 2 bytes are FE 00 (usually simply 2 bytes, but sometimes 5 or 8 bytes with a 3 or  6 byte "extra" content packet first)
 
