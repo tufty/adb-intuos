@@ -95,7 +95,7 @@ bits 8-11 pressure delta ?
 
 Are x and y "deltas" 2's complement, or sign + data?  *very* slow movement in the "negative" direction results in the "sign" bit being set, and low values in the lsbs.  If we were dealing with 2's  or 1's complement, we'd expect to see lots of 0b11111 fields.  I postulate sign + some other coding.
 
-..xxxxxy yyyy.. ........
+..xxxxxy yyyy.... ........
 
 Is what I'm assuming as pressure data instead a pair of multiplier / shift indicators for co-ordinates?  slow pen-up passes produce zeros here, fast ones put data in.  Sometimes.  I'm not sure it's pressure.
 
@@ -117,9 +117,60 @@ If they *are* error correction packets, they should be triggered by a threshold 
 
 If the 6 byte packets are simply 2x3 byte packets, we're almost certainly looking at some sort of adaptive delta encoding.
 
-** Well, Bernard got his o-scope out, and it appears that the 6 byte packets are simply 2 3 byte packets munged together in order to get the advertised 200pps (and they *do* hit that target, seems like Wacom care(d) about truth in advertising...
+** Well, Bernard got his o-scope out, and it appears that the 6 byte packets are simply 2 3 byte packets munged together in order to get the advertised 200pps - and they *do* hit that target, seems like Wacom care(d) about truth in advertising...
+
+So, 6 byte packets are simply 2 3 byte packets munged together.  We also see occasional 8 byte packets which appear to be 2 3 byte packets *plus* something else.  I've not seen a corresponding 5 byte packet (yet), could be the 2 bytes of "something else" are a last ditch attempt to keep up with the 200pps target (i.e. just the x and y offsets with (maybe) pressure information)
 
 Stream ends with any packet whose last 2 bytes are FE 00 (usually simply 2 bytes, but sometimes 5 or 8 bytes with a 3 or  6 byte "extra" content packet first)
+
+Encoding, from reverse-engineering the Wacom driver.
+
+3 byte packets ...
+
+..XXXXXY YYYYPPPP xxxxyyyy
+
+XXXXX - X delta encoding
+YYYYY - Y delta encoding
+PPPP  - Pressure delta encoding
+xxxx  - X tilt delta encoding
+yyyy  - Y tilt delta encoding
+
+Tilt decoding
+=============
+
+Tilt is encoded using a delta method with adaptive scaling.  The driver has a persistent "tilt shift" state for each axis, as follows:
+
+void decode_tilt (uint8_t encoding, int8_t * tilt_shift, uint16_t * tilt) {
+  uint8_t delta_magnitude = encoding & 0x07;
+  uint16_t delta = delta_magnitude << *tilt_shift;
+  if (encoding & 0x08) {
+    *tilt -= delta;
+  } else {
+    *tilt += delta;
+  }
+  switch (delta_magnitude) {
+    case 0%000:
+      *tilt_shift -= 3; break;
+    case 0%001:
+      *tilt_shift -= 2; break;
+    case 0%010:
+    case 0%011:
+      *tilt_shift -= 1; break;
+    case 0%100:
+    case 0%101:
+      break;
+    case 0%110:
+      *tilt_shift += 1; break;
+    case 0%111:
+      *tilt_shift += 2; break;
+  }
+  if (*tilt_shift < 0) *tilt_shift = 0;
+}
+
+
+    
+
+  
 
 
 
