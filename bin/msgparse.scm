@@ -4,11 +4,16 @@
 (define stdin (current-input-port))
 (define *in-proximity* #f)
 (define *x* 0)
+(define *x-shift* 0)
 (define *y* 0)
+(define *y-shift* 0)
 (define *p* 0)
+(define *p-shift* 0)
+(define *p-flag* 1)
 (define *v* 0)
+(define *v-shift* 0)
 (define *h* 0)
-
+(define *h-shift* 0)
 
 (define extract bitwise-bit-field)
 
@@ -19,6 +24,9 @@
 
 (define (extract/extend v start stop)
   (extend (extract v start stop) (- stop start)))
+
+(define (<< value shift)
+  (bitwise-arithmetic-shift-left value shift))
 
 (define (bits-fold n-bits width fn acc value)
   (let loop ([lo 0] [hi n-bits] [acc acc])
@@ -35,8 +43,49 @@
   (bits-fold 4 w
              (lambda (x acc) (string-append (number->string x 16) acc))
              "" x))
- 
+
+(define (posify x)
+  (if (> x 0) x 0))
+
+(define (decode-tilt delta value shift)
+  (let* ([op (if (= 1 (extract delta 3 4)) - +)]
+         [delta (extract delta 0 3)]
+         [new-value (op value delta)]
+         [new-shift
+          (case delta
+            ((0) (posify (- shift 3)))
+            ((1) (posify (- shift 2)))
+            ((2 3) (posify (- shift 1)))
+            ((4 5) shift)
+            ((6) (+ shift 1))
+            ((7) (+ shift 2)))])
+    (values new-value new-shift)))
+
+(define (tiltify x)
+  (- 64 x))
+
+(define (three-packet v)
+  (let ([dv (extract v 0 4)]
+        [dh (extract v 4 8)]
+        [dp (extract v 8 12)]
+        [dy (extract v 12 17)]
+        [dx (extract v 17 22)])
+    (let-values ([(v vs) (decode-tilt dv *v* *v-shift*)])
+      (set! *v* v)
+      (set! *v-shift* vs))
+    (let-values ([(h hs) (decode-tilt dh *h* *h-shift*)])
+      (set! *h* h)
+      (set! *h-shift* hs))
+    (display (format "h ~a : v ~a\n" (tiltify *h*) (tiltify *v*)))
+    ))
+
+(define (six-packet v)
+  (three-packet (extract v 24 48))
+  (three-packet (extract v 0 24)))
+
 (define (proximity v)
+  (set! *v-shift* 2)
+  (set! *h-shift* 2)
   (let ([tool (extract v 36 48)])
     (display (format "~a in Proximity\n"
                      (cond
@@ -71,78 +120,7 @@
     (set! *v* v)
     (set! *in-proximity* #t)))
       
-(define (three-packet v)
-  (let ([dv (extract v 0 4)]
-        [dh (extract v 4 8)]
-        [dp (extract v 8 12)]
-        [dy (extract v 12 17)]
-        [dx (extract v 17 22)])
-    (display (format "~a ~a ~a ~a ~a ~a"
-                     (number->binary-string (extract v 22 24) 2)
-                     (number->binary-string dx 5)
-                     (number->binary-string dy 5)
-                     (number->binary-string dp 4)
-                     (number->binary-string dh 4)
-                     (number->binary-string dv 4)))
-#;    (display (format " | ~a ~a ~a ~a ~a\n"
-                     (extend dx 5) (extend dy 5) (extend dp 4) (extend dh 4) (extend dv 4)))
-    (newline)
-    (if *in-proximity*
-        (begin
-        (set! *v* (+ *v* (extend dv 4)))
-        (set! *h* (+ *h* (extend dh 4)))
-        (set! *p* (+ *p* (extend dp 4)))
-        (set! *y* (+ *y* (bitwise-arithmetic-shift-left (extend dy 5) 0)))
-        (set! *x* (+ *x* (extend dx 5)))))))
 
-(define (six-packet v)
-  #;(define (modify v1 v2 width)
-    (+ (extend (* v1 16) width) (extend v2 width)))
-#;  (define (modify v1 v2 width)
-    (+ (bitwise-arithmetic-shift-left (extend v1 width) 7)
-       (bitwise-arithmetic-shift-left (extend v2 width) 7)))
-  (define (modify v1 v2 width)
-    (* (extend v2 width) (abs (extend v1 width))))
-  ;; #;  (define (modify v1 v2 width)
-  ;; (+ (* (extend v2 width) (bitwise-arithmetic-shift-left 1 width)) (extend v1 width)))
-  ;; #;  (define (modify v1 v2 width)
-  ;; (+ (extend v1 width) (extend v2 width)))
-  ;; #;  (define (modify v1 v2 width)
-  ;; (* (extend v2 width) (abs (extend v1 width))))
-;;  (three-packet (extract v 24 48))
-;;  (three-packet (extract v 0 24))
-
-  (let ([dv1 (extract v 0 4)]
-        [dh1 (extract v 4 8)]
-        [dp1 (extract v 8 12)]
-        [dy1 (extract v 12 17)]
-        [dx1 (extract v 17 22)]
-        [dv2 (extract v 24 28)]
-        [dh2 (extract v 28 32)]
-        [dp2 (extract v 32 36)]
-        [dy2 (extract v 36 41)]
-        [dx2 (extract v 41 46)])
-    (display (format "~a ~a ~a ~a ~a ~a : "
-                     (number->binary-string (extract v 46 48) 2)
-                     (number->binary-string dx2 5)
-                     (number->binary-string dy2 5)
-                     (number->binary-string dp2 4)
-                     (number->binary-string dh2 4)
-                     (number->binary-string dv2 4)))
-    (display (format "~a ~a ~a ~a ~a ~a\n"
-                     (number->binary-string (extract v 22 24) 2)
-                     (number->binary-string dx1 5)
-                     (number->binary-string dy1 5)
-                     (number->binary-string dp1 4)
-                     (number->binary-string dh1 4)
-                     (number->binary-string dv1 4)))
-    (if *in-proximity*
-        (begin
-        (set! *v* (+ *v* (modify dv1 dv2 4)))
-        (set! *h* (+ *h* (modify dh1 dh2 4)))
-        (set! *p* (+ *p* (modify dp1 dp2 4)))
-        (set! *y* (+ *y* (modify dy1 dy2 5)))
-        (set! *x* (+ *x* (modify dx1 dx2 5)))))))
 
 (define (prox-out)
   (set! *in-proximity* #f)
