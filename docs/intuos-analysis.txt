@@ -167,11 +167,43 @@ void decode_tilt (uint8_t encoding, int8_t * tilt_shift, uint16_t * tilt) {
   if (*tilt_shift < 0) *tilt_shift = 0;
 }
 
+Initial tilt value comes from "in proximity" packet, tilt_shift is reset to 0x02.
 
-    
+Pressure encoding
+=================
 
-  
+Similar to tilt encoding, athough slightly more complex.  In addition to the shift value, we also have a flag.
 
+Location encoding
+=================
+
+Same story, different constants
+
+void decode_location (uint8_t encoding, int8_t * shift, uint16_t * location) {
+  uint8_t magnitude = encoding & 0xf;
+  uint16_t delta = magnitude << *shift;
+
+  if (encoding & 0x10) {
+    *location -= delta;
+  } else {
+    *location += delta;
+  }
+
+  switch (magnitude) {
+  case 0:
+    *shift -= 2; break;
+  case 1: case 2: case 3: case 4: case 5: case 6: case 7:
+    *shift -= 1; break;
+  case 15:
+    *shift += 2; break;
+  }
+		   
+  if (*shift < 0) *shift = 0;
+}
+
+clip to 0 <= location <= 0xffff (that's how Wacom do it, although it's probably better to clip to tablet resolution).  Initial location value comes from proximity packet, shift must be reset to 0x04 on every 8 byte packet;
+
+Even sustained and careful-not-to-reset penning (a minute or more) keeps the error factor down to 9 bits on my 6x8, that corresponds to 2.5% error.  Pretty good going for such a simple algorithm, and more than usable, I'd say.
 
 
 

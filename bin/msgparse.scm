@@ -27,6 +27,8 @@
 
 (define (<< value shift)
   (bitwise-arithmetic-shift-left value shift))
+(define (>> value shift)
+  (bitwise-arithmetic-shift-right value shift))
 
 (define (bits-fold n-bits width fn acc value)
   (let loop ([lo 0] [hi n-bits] [acc acc])
@@ -48,11 +50,11 @@
   (if (> x 0) x 0))
 
 (define (decode-tilt delta value shift)
-  (let* ([op (if (= 1 (extract delta 3 4)) - +)]
-         [delta (extract delta 0 3)]
-         [new-value (op value delta)]
+  (let* ([op (if (equal? 1 (extract delta 3 4)) - +)]
+         [delta-magnitude (extract delta 0 3)]
+         [new-value (op value (<< delta-magnitude shift))]
          [new-shift
-          (case delta
+          (case delta-magnitude
             ((0) (posify (- shift 3)))
             ((1) (posify (- shift 2)))
             ((2 3) (posify (- shift 1)))
@@ -63,6 +65,19 @@
 
 (define (tiltify x)
   (- 64 x))
+
+(define (decode-loc delta value shift)
+   (let* ([op (if (equal? 1 (extract delta 4 5)) - +)]
+         [delta-magnitude (extract delta 0 4)]
+         [new-value (op value (<< delta-magnitude shift))]
+         [new-shift
+          (case delta-magnitude
+            ((0) (posify (- shift 2)))
+            ((1 2 3 4 5 6 7) (posify (- shift 1)))
+            ((15) (+ shift 2))
+            (else shift))])
+     (values new-value new-shift)))
+ 
 
 (define (three-packet v)
   (let ([dv (extract v 0 4)]
@@ -76,7 +91,18 @@
     (let-values ([(h hs) (decode-tilt dh *h* *h-shift*)])
       (set! *h* h)
       (set! *h-shift* hs))
-    (display (format "h ~a : v ~a\n" (tiltify *h*) (tiltify *v*)))
+    (let-values ([(x xs) (decode-loc dx *x* *x-shift*)])
+      (display (format "~a ~a : ~a -> ~a ~a\n" (number->hex-string *x* 16) (number->binary-string dx 5) *x-shift* xs (extract dx 4 5)))
+      (set! *x* x)
+      (set! *x-shift* xs))
+    (let-values ([(y ys) (decode-loc dy *y* *y-shift*)])
+      (set! *y* y)
+      (set! *y-shift* ys))
+ #;   (display (format "~a->~a ~a->~a ~a ~a\n"
+                     (number->binary-string dx 5)
+                     (number->hex-string *x* 16)
+                     (number->binary-string dy 5)
+                     (number->hex-string *y* 16) (tiltify *h*) (tiltify *v*)))
     ))
 
 (define (six-packet v)
@@ -84,8 +110,6 @@
   (three-packet (extract v 0 24)))
 
 (define (proximity v)
-  (set! *v-shift* 2)
-  (set! *h-shift* 2)
   (let ([tool (extract v 36 48)])
     (display (format "~a in Proximity\n"
                      (cond
@@ -118,6 +142,11 @@
     (set! *p* p)
     (set! *h* h)
     (set! *v* v)
+      (set! *v-shift* 2)
+  (set! *h-shift* 2)
+  (set! *x-shift* 4)
+  (set! *y-shift* 4)
+
     (set! *in-proximity* #t)))
       
 
