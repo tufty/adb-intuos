@@ -38,7 +38,13 @@ TTT & 0xf06 == 0x902 : Airbrush
 TTT & 0xf06 == 0x004 : Mouse
 TTT & 0xF06 == 0x006 : Puck
 
-The trailing bytes don't change for my tablet, but are different for Bernard's.  Tablet ID, maybe.
+The trailing bytes don't change for my tablet, but are different for Bernard's.  Tablet ID, maybe.  Wacom docs suggest that the unique toolID is, in fact, 32 bits long - suggest the following interpretation:
+
+80 TT TI II II II Ix
+
+Where TTT is the tooltype and II... is the ToolID.
+
+ToolID is only unique within tooltype, giving us a unique toolID from the concatention of the two.
 
 The second packet encodes the "starting point" location.  
 
@@ -62,6 +68,14 @@ Top bit is either set or not, doesn't seem consistent with a particular button s
 Hypothesis :
 
 Pressure is 1024 levels for all tools (and for scrollwheels).  Tilt is +-60 degrees. This can be encoded in 3 bytes. 
+
+Wacom docs suggest:
+
+Pressure : 0 <= n <= 1024
+Tilt : -60 <= n <= 60
+Rotation (4D Mouse) : 10.6 fixed notation, 0 <= n <= 360
+Barrel Pressure (airbrush wheel) : -1024 <= n <= 1024
+Z Axis (4D Mouse thumbwheel) : -1024 <= n <= 1024
 
 First 10 bits appear to be pressure, naively encoded.
 
