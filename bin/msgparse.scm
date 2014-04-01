@@ -4,8 +4,10 @@
 (define stdin (current-input-port))
 (define *in-proximity* #f)
 (define *x* 0)
+(define *x-last* 0)
 (define *x-shift* 0)
 (define *y* 0)
+(define *y-last* 0)
 (define *y-shift* 0)
 (define *p* 0)
 (define *p-shift* 0)
@@ -29,6 +31,7 @@
   (bitwise-arithmetic-shift-left value shift))
 (define (>> value shift)
   (bitwise-arithmetic-shift-right value shift))
+(define & bitwise-and)
 
 (define (bits-fold n-bits width fn acc value)
   (let loop ([lo 0] [hi n-bits] [acc acc])
@@ -67,47 +70,51 @@
   (- 64 x))
 
 (define (decode-loc delta value shift)
-   (let* ([op (if (equal? 1 (extract delta 4 5)) - +)]
-         [delta-magnitude (extract delta 0 4)]
-         [new-value (op value (<< delta-magnitude shift))]
+  (let* ([dv (extract delta 0 4)]
+         [sdv (if (zero? (& delta #x10)) dv (- dv))]
+         [new-value (+ value (<< sdv shift))]
          [new-shift
-          (case delta-magnitude
+          (case dv
             ((0) (posify (- shift 2)))
             ((1 2 3 4 5 6 7) (posify (- shift 1)))
             ((15) (+ shift 2))
             (else shift))])
-     (values new-value new-shift)))
- 
+    (display (format "delta ~a (~a) shifted by ~a => ~a [shift ~a] "
+                     (number->binary-string delta 5) sdv shift (<< sdv shift) new-shift))
+    (values new-value new-shift)))
 
+(define (average-loc value last-value)
+  (>> (+ value last-value) 1))
+              
+(define (two-packet v)
+  (let ([dp (extract v 0 4)]
+        [dy (extract v 4 9)]
+        [dx (extract v 9 14)])
+    (display "deltas : ")
+    (let-values ([(x xs) (decode-loc dx *x-last* *x-shift*)]
+                 [(y ys) (decode-loc dy *y-last* *y-shift*)])
+      (let ([ax (average-loc x *x-last*)]
+            [ay (average-loc y *y-last*)])
+        (newline)
+        (set! *x-shift* xs)
+        (set! *x* ax)
+        (set! *x-last* x)
+        (set! *y-shift* ys)
+        (set! *y* ay)
+        (set! *y-last* y)))))
+      
 (define (three-packet v)
+  (two-packet (extract v 8 24))
   (let ([dv (extract v 0 4)]
-        [dh (extract v 4 8)]
-        [dp (extract v 8 12)]
-        [dy (extract v 12 17)]
-        [dx (extract v 17 22)])
+        [dh (extract v 4 8)])
+    #;(display (format "three-packet ~a ~a ~a\n" (number->binary-string v 24) (number->binary-string dh 4) (number->binary-string dv 4)))
     (let-values ([(v vs) (decode-tilt dv *v* *v-shift*)])
       (set! *v* v)
       (set! *v-shift* vs))
     (let-values ([(h hs) (decode-tilt dh *h* *h-shift*)])
       (set! *h* h)
       (set! *h-shift* hs))
-    (let-values ([(x xs) (decode-loc dx *x* *x-shift*)])
-      (display (format "~a ~a : ~a -> ~a ~a\n" (number->hex-string *x* 16) (number->binary-string dx 5) *x-shift* xs (extract dx 4 5)))
-      (set! *x* x)
-      (set! *x-shift* xs))
-    (let-values ([(y ys) (decode-loc dy *y* *y-shift*)])
-      (set! *y* y)
-      (set! *y-shift* ys))
- #;   (display (format "~a->~a ~a->~a ~a ~a\n"
-                     (number->binary-string dx 5)
-                     (number->hex-string *x* 16)
-                     (number->binary-string dy 5)
-                     (number->hex-string *y* 16) (tiltify *h*) (tiltify *v*)))
     ))
-
-(define (six-packet v)
-  (three-packet (extract v 24 48))
-  (three-packet (extract v 0 24)))
 
 (define (proximity v)
   (let ([tool (extract v 36 48)])
@@ -131,14 +138,18 @@
                          (number->string h 16)
                          (number->string v 16)))
     (if *in-proximity*
-        (display (format "error x = 0x~a y = 0x~a p = 0x~a h = 0x~a v = 0x~a\n"
-                         (number->string (- x *x*) 16)
-                         (number->string (- y *y*) 16)
-                         (number->string (- p *p*) 16)
-                         (number->string (- h *h*) 16)
-                         (number->string (- v *v*) 16))))
+        (display (format "error x = ~a y = ~a p = ~a h = ~a v = ~a\n"
+                         (number->string (- x *x*))
+                         (number->string (- y *y*))
+                         (number->string (- p *p*))
+                         (number->string (- h *h*))
+                         (number->string (- v *v*)))))
     (set! *x* x)
     (set! *y* y)
+    ;;(if (not *in-proximity*)
+        (begin 
+          (set! *x-last* x)
+          (set! *y-last* y));;)
     (set! *p* p)
     (set! *h* h)
     (set! *v* v)
@@ -162,28 +173,37 @@
         (cond
          [(pregexp-match "[[:xdigit:]]*" packet 5) =>
           (lambda (x)
-            (let ([matched-hex (car x)]
-                  [matched-val (string->number (car x) 16)])
-              (cond
-               [(= 14 (string-length matched-hex))
-                (proximity matched-val)]
-               [(and (= 16 (string-length matched-hex)) (eqv? #\A (string-ref matched-hex 0)))
-                (a-packet matched-val)]
-               [(and (= 16 (string-length matched-hex))
-                     (string=? "FEOO" (substring matched-hex 12 15)))
-                (six-packet (extract matched-val 16 64))
-                (prox-out)]
-               [(= 16 (string-length matched-hex))
-                (display (format "other 8 byte packet ~a\n" matched-hex))]
-               [(= 12 (string-length matched-hex))
-                (six-packet matched-val)]
-               [(= 6 (string-length matched-hex))
-                (three-packet matched-val)]
-               [(= 10 (string-length matched-hex))
-                (three-packet (extract matched-val 16 40))
-                (prox-out)]
-               [(= 4 (string-length matched-hex))
-                (prox-out)])))])
+            (let* ([matched-hex (car x)]
+                   [matched-val (string->number (car x) 16)]
+                   [length (string-length matched-hex)])
+              (display (format "packet ~a\n" matched-hex))
+              (let handle-packet ([index 0])
+                (if (< index length)
+                    (let ([first-byte (string->number (substring matched-hex index (+ index 2)) 16)])
+                      #;(display (format "index ~a\n" index))
+                      (cond
+                       [(= #x80 (bitwise-and first-byte #xe0))
+                        (proximity matched-val)
+                        (handle-packet (+ index 14))]
+                       [(= #xa0 (bitwise-and first-byte #xe0))
+                        (a-packet matched-val)
+                        (handle-packet (+ index 16))]
+                       [(= #xfe (bitwise-and first-byte #xfe))
+                        (prox-out)
+                        (handle-packet (+ index 4))]
+                       [(= 4 (- length index))
+                        (let ([a (* (- length index 4) 4)]
+                              [b (* (- length index) 4)])
+                          (two-packet (extract matched-val a b))
+                          (handle-packet (+ index 4)))]
+                       [else
+                        (let ([a (* (- length index 6) 4)]
+                              [b (* (- length index) 4)])
+                          (three-packet (extract matched-val a b))
+                          (handle-packet (+ index 6)))]))))))])
+        (display (format "~a ~a ~a ~a\n"
+                         (number->hex-string *x* 16) *x-shift*
+                         (number->hex-string *y* 16) *y-shift*))
         (loop (get-line stdin)))))
 
                        

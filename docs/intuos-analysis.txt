@@ -219,5 +219,38 @@ clip to 0 <= location <= 0xffff (that's how Wacom do it, although it's probably 
 
 Even sustained and careful-not-to-reset penning (a minute or more) keeps the error factor down to 9 bits on my 6x8, that corresponds to 2.5% error.  Pretty good going for such a simple algorithm, and more than usable, I'd say.
 
+My error estimation is wrong!  I wasn't handling the events properly.  Need to re-calculate.
 
+31/12/2104
+==========
 
+Right, with a bit more digging.
+
+The tablet can handle 2 separate tools at once.  Not sure quite what happens if we introduce a 3rd, I'll give it a try (my suspicion is that the third tool will be ignored).
+
+When a tool enters into proximity, we get a 7-byte packet with the top byte at 0b100txxxx where t is the tool index.
+
+This is followed by a (number of) "large" packet(s) which give the intial values for location, tilt, etc.  The high bit for these packets are always set.  Reverse-engineering appears to show that we will only have one or two of these.  The large packets we receive give the order of the delta packets we receive subsequently.
+
+The standard stylus only ever sends one large packet, starting with 0xA... This packet encodes location, tilt, pressure and stylus button state, and is followed by a series of delta packets.  These have the high bit set to 0, and may be packed in ADB packets of either 3 bytes (one "full" delta), 5 bytes (one "full" delta and one location /pressure delta), 6 bytes (2 "full" deltas), or 8 bytes (2 "full" deltas and one location / pressure delta).  Button state changes cause a new "large" packet, and reset the delta state machine.
+
+The packing of these delta packets is to keep up the 200pps overall sample rate.  Some tools send (at least some) 2 byte deltas (not "truncated" deltas) as a matter of course.  Basically, we can't go on adb packet length to deduce delta types (a 6 byte packet might be 2 3-byte deltas or 3 2-byte deltas, depending on tool type, or even a 6 byte large packet).
+
+The stream for a given tool ends with a 2 byte packet (either 0xfe00 or 0xff00), bit 16 giving the tool index.  This packet may well be catenated with other delta packets.
+
+All packets have a bit given over to tool index.  I assume that the streams for multiple tools are interleaved one way or another (but presumably not guaranteed to be a 1:1 interleave, or this bit would be extraneous - the driver could keep its own state without the device having to care, and it would save a bit, which wacom have been rather parsimonious with).  This does guarantee that the device and driver are operating "in lockstep", as it were, though, and that deltas aren't being misinterpreted as what they aren't.
+
+For a tool requiring too much data per delta to fit in (at most) 3 bytes and guarantee 200pps (for example, the airbrush tool gives location, x and y tilt, pressure and barrel pressure), we will alternate between delta packet formats. Need to sniff various tools to work this out.  My guess would be that we get multiple packet types for airbrush, 4d mouse (location, buttons, rotation, wheel / Z axis) and stroke stylus if they are supported on intuos (location, tilt, pressure, rotation).  All delta packets encode *at least* location.
+
+Wacom's intuos driver code allows for the packet stream to start in any arbitrary order, the state machine is very generic.  It even allows for subsequent large packets to occur mid-stream, after deltas have been received.  Not sure if this latter is necessary.  Do I replicate this or do I bypass it, writing state machines per tool type?  Probably need to wait untl I get my 4d mouse to see.
+
+Pressure sensitivity has an additional flag variable, I believe this corresponds to the tip click threshold.  I don't think we need to worry about this on the AVR, as it should be dealt with by the official wacom driver.
+
+There are a few types of delta data encodings.
+
+5 bits (sign + 4 bits) location delta (x or y) giving 0 <= n <= ffff
+4 bits (sign + 3 bits) pressure delta giving 0 <= n <= 3ff
+4 bits (sign + 3 bits) tilt delta giving 0 <= n <= 7f
+4 bits (overall sign + sign + 2 bits) rotation delta giving -707 <= n <= 707 (0x707 = 1799, i.e +- 180 degrees in tenths of a degree)
+4 bits (sign + 3 bits) barrel pressure delta giving 0 <= n <= 3ff
+4 bits (sign + 3 bits) z axis delta giving 0 <= n <= 3ff
