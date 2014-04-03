@@ -4,6 +4,20 @@
 #include <stdint.h>
 #include "state.h"
 
+#include "usb.h"
+
+#define WACOM_INTUOS5_PEN_ENDPOINT 3
+
+// Need this to tell the HID stack what we are, and let the Wacom driver hook up
+extern uint8_t device_descriptor[18];
+const extern uint8_t config_descriptor[34];
+const extern uint8_t hid_report_descriptor[154];
+
+const extern uint8_t string0[4];
+const extern uint8_t string1[12];
+extern uint8_t string2[20];
+const extern uint8_t empty_string[2];
+
 typedef union {
   uint8_t bytes[10];
   struct {
@@ -73,7 +87,6 @@ typedef union {
     };
   };
 } wacom_report_t;
-
 
 void queue_message (message_type_t type, uint8_t transducer);
 

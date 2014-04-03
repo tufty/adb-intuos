@@ -77,7 +77,8 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
 
     packet->mouse_4d_payload.rotation = transducers[index].rotation;
     packet->mouse_4d_payload.buttons = transducers[index].buttons & 0x3f;
-    // Do this better, it's probably fucked
+    // Do this better, it's probably fucked, the wacom setup is complex
+    // May actually be closer to the raw value from the tablet (see also rotation)
     packet->mouse_4d_payload.z = transducers[index].z >> 2;
     break;
   default:
@@ -99,4 +100,5 @@ void queue_message(message_type_t type, uint8_t index) {
   default:
     break;
   }
+  usb_send_packet(usb_report.bytes, 10, WACOM_INTUOS5_PEN_ENDPOINT, 50);
 }
