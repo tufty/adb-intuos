@@ -63,7 +63,7 @@ B is related to buttons, and only active for tip proximity (buttons not detected
 0bx010 = Side button 1 pressed on entry
 0bx100 = Side button 2 pressed on entry
 
-Top bit is either set or not, doesn't seem consistent with a particular button state.
+Top bit is either set or not, doesn't seem consistent with a particular button state.  Turns out it's the "proximity" or "touching" indicator.
 
 Hypothesis :
 
@@ -244,7 +244,7 @@ For a tool requiring too much data per delta to fit in (at most) 3 bytes and gua
 
 Wacom's intuos driver code allows for the packet stream to start in any arbitrary order, the state machine is very generic.  It even allows for subsequent large packets to occur mid-stream, after deltas have been received.  Not sure if this latter is necessary.  Do I replicate this or do I bypass it, writing state machines per tool type?  Probably need to wait untl I get my 4d mouse to see.
 
-Pressure sensitivity has an additional flag variable, I believe this corresponds to the tip click threshold.  I don't think we need to worry about this on the AVR, as it should be dealt with by the official wacom driver.
+Pressure sensitivity has an additional flag variable, I believe this corresponds to the tip click threshold.  I don't think we need to worry about this on the AVR, as it should be dealt with "host-side" by the official wacom driver.
 
 There are a few types of delta data encodings.
 
@@ -254,3 +254,7 @@ There are a few types of delta data encodings.
 4 bits (overall sign + sign + 2 bits) rotation delta giving -707 <= n <= 707 (0x707 = 1799, i.e +- 180 degrees in tenths of a degree)
 4 bits (sign + 3 bits) barrel pressure delta giving 0 <= n <= 3ff
 4 bits (sign + 3 bits) z axis delta giving 0 <= n <= 3ff
+
+4d mouse enters with an [89]... packet, follows with an f[cd]... packet, an f[0123]... packet, and then a sequence of interleaved delta packet.  I think the order of packets starts with the *last* major state packet, as opposed to starting with the first major state packet.  I'm certainly seeing major stte packets in the order "pressure" (wheel) followed by "rotation & buttons", and deltas in the other order.
+
+A midstream major state packet appears to reset the delta state stream.

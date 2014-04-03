@@ -11,7 +11,9 @@ all:	dirs $(OUTFILES)
 	echo done
 
 parsed/% : raw/%
-	$(PARSE) < $< > $@
+#	$(PARSE) < $< > $@
+	cp $< $@
+	perl -pi -e 's/^\[4T0:([0-9a-z]+).*/\1\n/misg' $@
 
 dirs:
 	mkdir -p parsed/pen-up parsed/pen-down
