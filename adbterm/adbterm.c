@@ -85,6 +85,7 @@ int main(void)
 
     // print a nice welcome message
     send_str(PSTR("\r\nADB terminal\r\n\r\n"));
+    send_str(PSTR("\r\nCommands:\r\nR        : ADB Bus Reset\r\nF        : ADB Flush\r\n[d]T[n]  : Device d Talk Register n\r\n[d]Ln:x     : Device d Listen Register n data x\r\nP        : Poll last command until ^C\r\n<Return> : Repeat last command\r\n%        : Toggle binary output\r\n#        : Toggle hex output\r\n\r\n"));
 
     // and then listen for commands and process them
     while (1) {

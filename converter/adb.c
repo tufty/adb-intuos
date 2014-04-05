@@ -268,6 +268,7 @@ static void initEncodeByte(byte bits)
 
 static ErrorStatus encodeByte()
 {
+  LED_TOGGLE;
   if(encodedBits == 8)
     {
       return success;
@@ -490,6 +491,7 @@ static void errorAndResetDecoder(byte value)
 
 static void timeoutInterrupt()
 {
+  LED_TOGGLE;
   // hold interrupts until the "real" timeout time has been reached
   while(TCNT3 < timeout_target) { ; }
 
@@ -672,6 +674,7 @@ static void timeoutInterrupt()
 
 static void inputCaptureInterrupt()
 {
+  LED_TOGGLE;
   //------------------------------------------------
   // toggle input config to wait for the next "edge"
   //------------------------------------------------
@@ -809,11 +812,11 @@ void adb_init()
 
 ISR(TIMER3_CAPT_vect)
 {
- inputCaptureInterrupt();
+  inputCaptureInterrupt();
 }
 
 ISR(TIMER3_COMPA_vect)
 {
- timeoutInterrupt();
+  timeoutInterrupt();
 }
 

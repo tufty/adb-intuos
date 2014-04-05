@@ -22,6 +22,7 @@
 
 #include <avr/io.h>
 #include <avr/pgmspace.h>
+#include <avr/interrupt.h>
 #include <stdint.h>
 #include <ctype.h>
 #include <util/delay.h>
@@ -34,8 +35,8 @@
 #define CPU_PRESCALE(n) (CLKPR = 0x80, CLKPR = (n))
 
 // Nasty globals
-uint8_t adb_command_just_finished = 0;
-uint8_t adb_command_queued = 0;
+volatile uint8_t adb_command_just_finished = 0;
+volatile uint8_t adb_command_queued = 0;
 AdbPacket the_packet;
 
 void error_condition(uint8_t code)
@@ -76,10 +77,9 @@ int main(void)
   // tablet type "automagically"
   _delay_ms(300);  // Let the tablet power up
   adb_init();
+  sei();
 
-  LED_TOGGLE;
-
-  // First action : talk R1, get tablet type
+  // First action : talk R3
   adb_command_just_finished = 0;
   the_packet.address = 4;
   the_packet.command = ADB_COMMAND_TALK;
@@ -89,11 +89,14 @@ int main(void)
   initiateAdbTransfer(&the_packet, &adb_callback);
   //_delay_ms(1000);
 
-  while(!adb_command_just_finished);
+  while(!adb_command_just_finished) {_delay_ms(500);};
   handle_r1_message(the_packet.data);
+  LED_OFF;
 
   // At this point, we should be able to bring up USB, and get the correct configuration
+  cli();
   usb_init();
+  sei();
   while (!usb_configured());
 
   // Carry on with initialising the tablet.
@@ -109,8 +112,6 @@ int main(void)
   initiateAdbTransfer(&the_packet, &adb_callback);
   while(!adb_command_just_finished);
 
-  LED_TOGGLE;
-  
   // Listen R2 0x308c (sniffed from mac traffic by Bernard)
   adb_command_just_finished = 0;
   the_packet.command = ADB_COMMAND_LISTEN;
@@ -121,8 +122,6 @@ int main(void)
 
   initiateAdbTransfer(&the_packet, &adb_callback);
   while(!adb_command_just_finished);
-
-  LED_TOGGLE;
 
   // Set up for polling
   adb_command_just_finished = 0;
@@ -136,7 +135,6 @@ int main(void)
       _delay_ms(8);
     } else {
       if (adb_command_just_finished) {
-	LED_TOGGLE;
 	adb_command_just_finished = 0;
 	if (the_packet.datalen > 0) {
 	  handle_r0_message(the_packet.data);

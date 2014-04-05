@@ -42,12 +42,12 @@ void handle_r1_message (uint8_t * msg) {
     }
     break;
   default:
-    // TODO Flash LED on error
-    //   ERROR(1);
+    // Error 1 - Failed to recognise tablet
+    error_condition(1);
     break;
   }
 
   // Populate device descriptor
   device_descriptor[10] = (uint8_t)(id_product >> 8);
-  device_descriptor[11] = (uint8_t)(id_product & 0x0f);
+  device_descriptor[11] = (uint8_t)(id_product & 0xff);
 }

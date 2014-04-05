@@ -270,7 +270,7 @@ static inline uint8_t handleStandardEndpoint0()
     {
     case GET_DESCRIPTOR:
       {
-	uint16_t desc_addr;
+	uint8_t *  desc_addr;
 	uint8_t desc_length;
 
 	switch(req.value_high)
@@ -278,13 +278,13 @@ static inline uint8_t handleStandardEndpoint0()
 	  case 0x01:  // ----- DEVICE DESCRIPTOR -----
 	    if(req.value_low != 0) return USBREQ_STALL;
 
-	    desc_addr = (uint16_t)&device_descriptor;
+	    desc_addr = device_descriptor;
 	    desc_length = sizeof(device_descriptor);
 	    break;
 	  case 0x02:  // ----- CONFIG DESCRIPTOR -----
 	    if(req.value_low != 0) return USBREQ_STALL;
 
-	    desc_addr = (uint16_t)config_descriptor;
+	    desc_addr = config_descriptor;
 	    desc_length = sizeof(config_descriptor);
 	    break;
 	  case 0x21:  // ----- HID INTERFACE DESCRIPTOR -----
@@ -298,7 +298,7 @@ static inline uint8_t handleStandardEndpoint0()
 
 	    if(req.index_low == 0)
 	      {
-		desc_addr = (uint16_t)hid_report_descriptor;
+		desc_addr = hid_report_descriptor;
 		desc_length = sizeof(hid_report_descriptor);
 	      }
 	    else
@@ -311,21 +311,21 @@ static inline uint8_t handleStandardEndpoint0()
 	    switch(req.value_low)
 	      {
 	      case 0:
-		desc_addr = (uint16_t)string0;
+		desc_addr = string0;
 		desc_length = sizeof(string0);
 		break;
 	      case 1:
-		desc_addr = (uint16_t)string1;
+		desc_addr = string1;
 		desc_length = sizeof(string1);
 		break;
 	      case 2:
-		desc_addr = (uint16_t)string2;
+		desc_addr = string2;
 		desc_length = sizeof(string2);
 		break;
 	      case 3:
 	      case 4:
 	      case 5:
-		desc_addr = (uint16_t)empty_string;
+		desc_addr = empty_string;
 		desc_length = sizeof(empty_string);
 		break;
 	      default:
@@ -364,7 +364,8 @@ static inline uint8_t handleStandardEndpoint0()
 
 	    for (i = n; i; i--)
 	      {
-		UEDATX = pgm_read_byte(desc_addr++);
+		UEDATX = *desc_addr;
+		desc_addr++;
 	      }
 
 	    len -= n;
@@ -707,6 +708,8 @@ static inline uint8_t handleEnpoint0()
 //
 ISR(USB_COM_vect)
 {
+  LED_TOGGLE;
+
   //	sbi(PORTC,6);
 
   UENUM = 0;
