@@ -75,9 +75,10 @@ int main(void)
   // Initialise adb, get the tablet details, and then fire up USB
   // This will hopefully enable us to identify as the "correct" 
   // tablet type "automagically"
-  _delay_ms(300);  // Let the tablet power up
+  _delay_ms(1000);  // Let the tablet power up
   adb_init();
   sei();
+  _delay_ms(300);
 
   // First action : talk R3
   adb_command_just_finished = 0;

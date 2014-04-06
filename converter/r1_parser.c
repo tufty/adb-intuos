@@ -7,17 +7,19 @@
 
 // Parser for "talk register 1" messages
 void handle_r1_message (uint8_t msg_length, uint8_t * msg) {
+  if (msg_length == 0)
+    error_condition(10);
   if (msg_length < 8) {
-    error_condition(1);
+    error_condition(msg_length);
   }
 
   uint16_t id_product = 0xdead;
-  uint16_t max_x = ((uint16_t)(msg[2]) << 8) | msg[3];
-  uint16_t max_y = ((uint16_t)(msg[4]) << 8) | msg[5];
+  uint16_t max_x = ((uint16_t)(msg[2]) << 8) | (uint16_t)msg[3];
+  uint16_t max_y = ((uint16_t)(msg[4]) << 8) | (uint16_t)msg[5];
 
   // Tablet ids taken from http://www.linux-usb.org/usb.ids
   // Little-endian
-  switch (tablet.max_x) {
+  switch (max_x) {
   case 0x319c:
     id_product = 0x4100;    // Intuos 2 4x5
     string2[8] = '0'; string2[10] = '4'; string2[12] = '0'; string2[14] = '5';
@@ -47,7 +49,7 @@ void handle_r1_message (uint8_t msg_length, uint8_t * msg) {
     break;
   default:
     // Error 1 - Failed to recognise tablet
-    error_condition(2);
+    error_condition(9);
     break;
   }
 
