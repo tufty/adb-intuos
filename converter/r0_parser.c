@@ -138,10 +138,10 @@ void process_rotation_delta (uint8_t raw, uint8_t * shift, uint16_t * value) {
 }
 
 
-void handle_r0_message(uint8_t * msg) {
-  uint8_t index = 1;
+void handle_r0_message(uint8_t msg_length, uint8_t * msg) {
+  uint8_t index = 0;
   uint8_t transducer = 0;
-  while (index < msg[0]) {
+  while (index < msg_length) {
     uint8_t send_message = 1;
     // switch on message major type
     switch (msg[index] & 0xf0) {
@@ -323,7 +323,7 @@ void handle_r0_message(uint8_t * msg) {
 			       &transducers[transducer].pressure_shift,
 			       &transducers[transducer].pressure);
 	index += 2;
-	if (index + 2 < msg[0]) {
+	if (index + 2 < msg_length) {
 	  process_tilt_delta (msg[index + 2] >> 4,
 			      &transducers[transducer].tilt_x_shift,
 			      &transducers[transducer].tilt_x);
@@ -373,7 +373,7 @@ void handle_r0_message(uint8_t * msg) {
       /* 	index += 2; */
       /*   case 0xac: */
       /* 	index += 2; */
-      /* 	if (index + 2 < msg[0]) { */
+      /* 	if (index + 2 < msg_length) { */
       /* 	  process_tilt_delta(transducer, msg[index + 2] >> 4, msg[index + 2] & 0x0f); */
       /* 	  index += 1; */
       /* 	}  */
@@ -391,7 +391,7 @@ void handle_r0_message(uint8_t * msg) {
       /*   case 0xb4: */
       /* 	process_pressure_delta(transducer, msg[index + 1] & 0x0f); */
       /* 	index += 2; */
-      /* 	if (index + 2 < msg[0]) { */
+      /* 	if (index + 2 < msg_length) { */
       /* 	  process_tilt_delta(transducer, msg[index + 2] >> 4, msg[index + 2] & 0x0f); */
       /* 	  index += 1; */
       /* 	}  */
@@ -403,7 +403,7 @@ void handle_r0_message(uint8_t * msg) {
       /*  case 0xbc: */
       /* 	process_pressure_delta(transducer, msg[index + 1] & 0x0f); */
       /* 	index += 2; */
-      /* 	if (index + 2 < msg[0]) { */
+      /* 	if (index + 2 < msg_length) { */
       /* 	  process_tilt_delta(transducer, msg[index + 2] >> 4, msg[index + 2] & 0x0f); */
       /* 	  index += 1; */
       /* 	}  */

@@ -90,7 +90,7 @@ int main(void)
   //_delay_ms(1000);
 
   while(!adb_command_just_finished) {_delay_ms(500);};
-  handle_r1_message(the_packet.data);
+  handle_r1_message(the_packet.datalen, the_packet.data);
   LED_OFF;
 
   // At this point, we should be able to bring up USB, and get the correct configuration
@@ -137,7 +137,7 @@ int main(void)
       if (adb_command_just_finished) {
 	adb_command_just_finished = 0;
 	if (the_packet.datalen > 0) {
-	  handle_r0_message(the_packet.data);
+	  handle_r0_message(the_packet.datalen, the_packet.data);
 	}
       } 
       adb_command_queued = 1;

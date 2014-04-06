@@ -6,7 +6,11 @@
 #include "state.h"
 
 // Parser for "talk register 1" messages
-void handle_r1_message (uint8_t * msg) {
+void handle_r1_message (uint8_t msg_length, uint8_t * msg) {
+  if (msg_length < 8) {
+    error_condition(1);
+  }
+
   uint16_t id_product = 0xdead;
   uint16_t max_x = ((uint16_t)(msg[2]) << 8) | msg[3];
   uint16_t max_y = ((uint16_t)(msg[4]) << 8) | msg[5];
@@ -43,7 +47,7 @@ void handle_r1_message (uint8_t * msg) {
     break;
   default:
     // Error 1 - Failed to recognise tablet
-    error_condition(1);
+    error_condition(2);
     break;
   }
 
