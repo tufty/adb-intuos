@@ -8,6 +8,8 @@
 #ifndef AVR_UTIL_H_
 #define AVR_UTIL_H_
 
+#include <avr/io.h>
+
 #ifndef cbi
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #endif

@@ -7,6 +7,7 @@
 #include "usb.h"
 
 #define WACOM_INTUOS5_PEN_ENDPOINT 3
+#define WACOM_INTUOS2_PEN_ENDPOINT 1
 
 // Need this to tell the HID stack what we are, and let the Wacom driver hook up
 extern uint8_t device_descriptor[18];

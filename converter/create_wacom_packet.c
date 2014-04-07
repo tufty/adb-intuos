@@ -3,6 +3,7 @@
 
 #include "state.h"
 #include "usb_side.h"
+#include "led.h"
 
 wacom_report_t usb_report;
 
@@ -100,5 +101,5 @@ void queue_message(message_type_t type, uint8_t index) {
   default:
     break;
   }
-  usb_send_packet(usb_report.bytes, 10, WACOM_INTUOS5_PEN_ENDPOINT, 50);
+  usb_send_packet(usb_report.bytes, 10, WACOM_INTUOS2_PEN_ENDPOINT, 50);
 }

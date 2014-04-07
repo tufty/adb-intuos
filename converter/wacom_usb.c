@@ -24,7 +24,7 @@ uint8_t device_descriptor[18] = {
 // Config and HID report descriptors
 // Ripped direct from Bernard's Intuos 2 descriptors.
 // These are static
-const uint8_t PROGMEM config_descriptor[34] = {
+const uint8_t config_descriptor[34] = {
   0x9,		// bLength - USB spec 9.6.3, page 264-266, Table 9-10
   0x2,		// bDescriptorType;
   0x22,0x0,     // wTotalLength (9+9+9+7)
@@ -60,7 +60,7 @@ const uint8_t PROGMEM config_descriptor[34] = {
   0x5		// bInterval max number of ms between transmit packets
 }; 
 
-const uint8_t PROGMEM hid_report_descriptor[154] = {
+const uint8_t hid_report_descriptor[154] = {
   0x5,0x1,                // USAGE_PAGE (Generic Desktop)
   0x9,0x2,                // USAGE (Mouse)
   0xa1,0x1,               // COLLECTION (Application)
@@ -140,9 +140,9 @@ const uint8_t PROGMEM hid_report_descriptor[154] = {
   0xc0            // END_COLLECTION
 };
 
-const uint8_t PROGMEM string0[4] = { 4, 3, 0x04,0x09 };
+const uint8_t string0[4] = { 4, 3, 0x04,0x09 };
 
-const uint8_t PROGMEM string1[12] = 
+const uint8_t string1[12] = 
   {
     0x0c, 0x03,
     'W', 0x00, 'A', 0x00, 'C', 0x00, 'O', 0x00, 'M', 0x00

@@ -92,7 +92,7 @@ static inline void usb_ack_out(void)
   UEINTX = ~(1 << RXOUTI);
 }
 
-static uint8_t endpointSize[5];
+static uint8_t endpointSize[5] = {8, 10, 0, 0, 0};
 
 // initialize USB
 void usb_init(void)
@@ -106,11 +106,6 @@ void usb_init(void)
   //	UDCON = (1<<LSM);			// enable attach resistor - Low Speed USB
   UDCON = 0; // enable attach resistor - Full Speed USB
   usb_configuration = 0;
-
-  endpointSize[0] = 8;
-  endpointSize[1] = 10;
-  endpointSize[2] = 0;
-  endpointSize[3] = 0;
 
   // enable End-Of-Reset and Start-Of-Frame interrupts
   UDIEN = (1<<EORSTE)|(1<<SOFE);
@@ -282,10 +277,11 @@ static inline uint8_t handleStandardEndpoint0()
 	    desc_length = sizeof(device_descriptor);
 	    break;
 	  case 0x02:  // ----- CONFIG DESCRIPTOR -----
-	    if(req.value_low != 0) return USBREQ_STALL;
+	    //if(req.value_low != 0) return USBREQ_STALL;
 
 	    desc_addr = config_descriptor;
-	    desc_length = sizeof(config_descriptor);
+	    desc_length = 0x22;//sizeof(config_descriptor);
+	    //signal_error(desc_length);
 	    break;
 	  case 0x21:  // ----- HID INTERFACE DESCRIPTOR -----
 	    //if(req.value_low != 0) return USBREQ_STALL;
@@ -340,7 +336,7 @@ static inline uint8_t handleStandardEndpoint0()
 	  return USBREQ_STALL;
 
 	uint8_t len = (req.wLength < 256) ? req.wLength : 255;
-	if (len > desc_length)
+	if ((len > desc_length) || (len == 0))
 	  len = desc_length;
 
 	uint8_t n,i;
@@ -364,8 +360,7 @@ static inline uint8_t handleStandardEndpoint0()
 
 	    for (i = n; i; i--)
 	      {
-		UEDATX = *desc_addr;
-		desc_addr++;
+		UEDATX = *desc_addr++;
 	      }
 
 	    len -= n;
@@ -708,8 +703,6 @@ static inline uint8_t handleEnpoint0()
 //
 ISR(USB_COM_vect)
 {
-  LED_TOGGLE;
-
   //	sbi(PORTC,6);
 
   UENUM = 0;
