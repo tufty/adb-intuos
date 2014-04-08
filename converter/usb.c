@@ -309,21 +309,21 @@ static inline uint8_t handleStandardEndpoint0()
 	      {
 	      case 0:
 		desc_addr = (uint8_t*)&string0;
-		desc_length = sizeof(string0);
+		desc_length = string0.length;
 		break;
 	      case 1:
 		desc_addr = (uint8_t*)&string1;
-		desc_length = sizeof(string1);
+		desc_length = string1.length;
 		break;
 	      case 2:
 		desc_addr = (uint8_t*)&string2;
-		desc_length = sizeof(string2);
+		desc_length = string2.length;
 		break;
 	      case 3:
 	      case 4:
 	      case 5:
 		desc_addr = (uint8_t*)&empty_string;
-		desc_length = sizeof(empty_string);
+		desc_length = empty_string.length;
 		break;
 	      default:
 		return USBREQ_STALL;

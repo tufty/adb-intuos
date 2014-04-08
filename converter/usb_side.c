@@ -13,8 +13,6 @@ const product_id_t product_ids[] =
 // Number of products we fake
 const uint8_t n_product_ids = 5;
 
-
-
 // Tablet device descriptor
 // Pre-set up with the stuff we already know
 uint8_t device_descriptor[18] = {
@@ -155,18 +153,19 @@ const uint8_t hid_report_descriptor[154] = {
 
 const usb_string_t string0 =      { 0x04, 0x03, { 0x0409 } };
 const usb_string_t string1 =      { 0x0c, 0x03, L"WACOM" }; //0x5700, 0x4100, 0x4300, 0x4f00, 0x4d00 };
-const usb_string_t string2 =      { 0x14, 0x03, L"XD-XXXX-U" };
+usb_string_t string2 =      { 0x14, 0x03, L"XD-XXXX-U" };
 const usb_string_t empty_string = { 0x04, 0x03, L"?" };
 
 // Do product identification
 //
 void identify_product(uint16_t product_id) {
   for (uint8_t i = 0; i < n_product_ids; i++) {
-    if (product_ids[i].product_id == product_id) {
+    product_id_t * pid = &product_ids[i];
+    if (pid->product_id == product_id) {
       // Set up target device descriptor
-      device_descriptor[10] = (uint8_t)(product_ids[i].product_id >> 8);
-      device_descriptor[11] = (uint8_t)(product_ids[i].product_id & 0xff);
-      strncpy((char *)&string2.string, (const char *)&product_ids[i].product_name, 18);
+      device_descriptor[10] = (uint8_t)(pid->product_id >> 8);
+      device_descriptor[11] = (uint8_t)(pid->product_id & 0xff);
+      memcpy((void *)(string2.string), (const void *)(pid->product_name), string2.length - 2);
       return;
     }
   }

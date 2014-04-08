@@ -6,7 +6,7 @@
 
 typedef struct {
   const uint16_t product_id;
-  const int16_t product_name[];
+  const int16_t product_name[10];
 } product_id_t; 
 
 extern const product_id_t product_ids[];
@@ -25,7 +25,7 @@ const extern uint8_t hid_report_descriptor[154];
 
 const extern usb_string_t string0;
 const extern usb_string_t string1;
-const extern usb_string_t string2;
+extern usb_string_t string2;
 const extern usb_string_t empty_string;
 
 
