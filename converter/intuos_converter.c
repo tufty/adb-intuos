@@ -27,7 +27,7 @@
 #include <ctype.h>
 #include <util/delay.h>
 #include "avr_util.h"
-#include "adb.h"
+#include "adb_codec.h"
 #include "adb_side.h"
 #include "usb_side.h"
 #include "led.h"
@@ -36,8 +36,7 @@
 
 // Nasty globals
 volatile uint8_t adb_command_just_finished = 0;
-volatile uint8_t adb_command_queued = 0;
-AdbPacket the_packet;
+volatile AdbPacket the_packet;
 
 void error_condition(uint8_t code)
 {
@@ -50,16 +49,15 @@ void error_condition(uint8_t code)
       for(uint8_t i = code;i>0;i--)
 	{
 	  LED_ON;
-	  _delay_ms(700);
+	  _delay_ms(250);
 	  LED_OFF;
-	  _delay_ms(700);
+	  _delay_ms(250);
 	}
     }
 }
 
 void adb_callback(uint8_t errorCode) {
   adb_command_just_finished = 1;
-  adb_command_queued = 0;
 }
 
 // ADB / USB initialisation and polling loop
@@ -69,15 +67,17 @@ int main(void)
   CPU_PRESCALE(0);
   LED_CONFIG;
   LED_OFF;
+  sei();
 
   // Do things the other way around compared to adbterm
   // Initialise adb, get the tablet details, and then fire up USB
   // This will hopefully enable us to identify as the "correct" 
   // tablet type "automagically"
   _delay_ms(1000);  // Let the tablet power up
+
+  __BEGIN_CRITICAL_SECTION
   adb_init();
-  sei();
-  _delay_ms(300);
+  __END_CRITICAL_SECTION
 
   // First action : talk R3
   adb_command_just_finished = 0;
@@ -91,78 +91,62 @@ int main(void)
 
   while(!adb_command_just_finished) {_delay_ms(8);};
   handle_r1_message(the_packet.datalen, the_packet.data);
-  LED_OFF;
 
   // At this point, we should be able to bring up USB, and get the correct configuration
-  cli();
+  __BEGIN_CRITICAL_SECTION
   usb_init();
-  sei();
-  while (!usb_configured());
+  __END_CRITICAL_SECTION
 
-  LED_ON;
+    sei();
+
+  while (!usb_configured());
 
   // Carry on with initialising the tablet.
   // Not sure if these steps are necessary
   // Listen R2 0x538c (sniffed from mac traffic by Bernard)
-  /* adb_command_just_finished = 0; */
-  /* the_packet.command = ADB_COMMAND_LISTEN; */
-  /* the_packet.parameter = 2; */
-  /* the_packet.datalen = 2; */
-  /* the_packet.data[0] = 0x53; */
-  /* the_packet.data[1] = 0x8c; */
+  adb_command_just_finished = 0;
+  the_packet.command = ADB_COMMAND_LISTEN;
+  the_packet.parameter = 2;
+  the_packet.datalen = 2;
+  the_packet.data[0] = 0x53;
+  the_packet.data[1] = 0x8c;
 
-  /* initiateAdbTransfer(&the_packet, &adb_callback); */
-  /* while(!adb_command_just_finished); */
+  initiateAdbTransfer(&the_packet, &adb_callback);
+  while(!adb_command_just_finished);
 
-  /* // Listen R2 0x308c (sniffed from mac traffic by Bernard) */
-  /* adb_command_just_finished = 0; */
-  /* the_packet.command = ADB_COMMAND_LISTEN; */
-  /* the_packet.parameter = 2; */
-  /* the_packet.datalen = 2; */
-  /* the_packet.data[0] = 0x30; */
-  /* the_packet.data[1] = 0x8c; */
+  // Listen R2 0x308c (sniffed from mac traffic by Bernard)
+  adb_command_just_finished = 0;
+  the_packet.command = ADB_COMMAND_LISTEN;
+  the_packet.parameter = 2;
+  the_packet.datalen = 2;
+  the_packet.data[0] = 0x30;
+  the_packet.data[1] = 0x8c;
 
-  /* initiateAdbTransfer(&the_packet, &adb_callback); */
-  /* while(!adb_command_just_finished); */
+  initiateAdbTransfer(&the_packet, &adb_callback);
+  while(!adb_command_just_finished);
 
   // Set up for polling
   adb_command_just_finished = 0;
-  adb_command_queued = 0;
   the_packet.address = 4;
   the_packet.command = ADB_COMMAND_TALK;
   the_packet.parameter = 0;
   the_packet.datalen = 0;
-
-  LED_OFF;
-
-  sei();
+  initiateAdbTransfer(&the_packet, &adb_callback);
 
   // The tablet is now up, we can start polling R0 for data
   while (1) {
-    if (adb_command_queued == 1) {
-      LED_OFF;
-      _delay_ms(500);
-    } else {
-      if (adb_command_just_finished == 1) {
-	adb_command_just_finished = 0;
-	if (the_packet.datalen > 0) {
-	  handle_r0_message(the_packet.datalen, the_packet.data);
-	}
-      } 
-      adb_command_queued = 1;
-      the_packet.datalen = 0;
-      the_packet.data[0] = 0;
-      the_packet.data[1] = 0;
-      the_packet.data[2] = 0;
-      the_packet.data[3] = 0;
-      the_packet.data[4] = 0;
-      the_packet.data[5] = 0;
-      the_packet.data[6] = 0;
-      the_packet.data[7] = 0;
-      initiateAdbTransfer(&the_packet, &adb_callback);
-      LED_ON;
-      _delay_ms(500);
+    while(!adb_command_just_finished) { _delay_ms(8); }
+
+    adb_command_just_finished = 0;
+    if (the_packet.datalen > 0) {
+      LED_TOGGLE;
+      handle_r0_message(the_packet.datalen, the_packet.data);
     }
+    the_packet.address = 4;
+    the_packet.command = ADB_COMMAND_TALK;
+    the_packet.parameter = 0;
+    the_packet.datalen = 0;
+    initiateAdbTransfer(&the_packet, &adb_callback);
   }
 }
 

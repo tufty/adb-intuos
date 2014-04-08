@@ -33,6 +33,7 @@
 #include "usb.h"
 #include "usb_side.h"
 #include "usb_priv.h"
+#include "usb_side_priv.h"
 #include "led.h"
 
 #define RAWHID_INTERFACE	0
@@ -265,7 +266,7 @@ static inline uint8_t handleStandardEndpoint0()
     {
     case GET_DESCRIPTOR:
       {
-	uint8_t *  desc_addr;
+	const uint8_t *  desc_addr;
 	uint8_t desc_length;
 
 	switch(req.value_high)
@@ -307,21 +308,21 @@ static inline uint8_t handleStandardEndpoint0()
 	    switch(req.value_low)
 	      {
 	      case 0:
-		desc_addr = string0;
+		desc_addr = (uint8_t*)&string0;
 		desc_length = sizeof(string0);
 		break;
 	      case 1:
-		desc_addr = string1;
+		desc_addr = (uint8_t*)&string1;
 		desc_length = sizeof(string1);
 		break;
 	      case 2:
-		desc_addr = string2;
+		desc_addr = (uint8_t*)&string2;
 		desc_length = sizeof(string2);
 		break;
 	      case 3:
 	      case 4:
 	      case 5:
-		desc_addr = empty_string;
+		desc_addr = (uint8_t*)&empty_string;
 		desc_length = sizeof(empty_string);
 		break;
 	      default:

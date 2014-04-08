@@ -1,8 +1,48 @@
-#include <string.h>
-
 #include "adb_side.h"
 #include "usb_side.h"
-#include "state.h"
+#include "shared_state.h"
+
+#include <string.h>
+
+// Parser for "talk register 1" messages
+void handle_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
+  if (msg_length == 0)
+    error_condition(10);
+  if (msg_length < 8) {
+    error_condition(msg_length);
+  }
+
+  uint16_t id_product = 0xdead;
+  uint16_t max_x = ((uint16_t)(msg[2]) << 8) | (uint16_t)msg[3];
+  uint16_t max_y = ((uint16_t)(msg[4]) << 8) | (uint16_t)msg[5];
+
+  // Tablet ids taken from http://www.linux-usb.org/usb.ids
+  // Little-endian
+  switch (max_x) {
+  case 0x319c:
+    id_product = 0x4100;    // Intuos 2 4x5
+    break;
+  case 0x4f60:
+    id_product = 0x4200;    // Intuos 2 6x8
+    break;
+  case 0x594c:
+    id_product = 0x4300;    // Intuos 2 9x12
+    break;
+  case 0x7710:
+    if (max_y == max_x) {
+      id_product = 0x4400;  // Intuos 2 12x12
+    } else { 
+      id_product = 0x4800;  // Intuos 2 12x18
+    }
+    break;
+  default:
+    // Error 1 - Failed to recognise tablet
+    error_condition(9);
+    break;
+  }
+
+  identify_product(id_product);
+}
 
 // Averaging of locations
 void average_location(uint8_t average, uint16_t loc, uint16_t * p_loc, uint16_t * p_old_loc) {
@@ -138,7 +178,7 @@ void process_rotation_delta (uint8_t raw, uint8_t * shift, uint16_t * value) {
 }
 
 
-void handle_r0_message(uint8_t msg_length, uint8_t * msg) {
+void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
   uint8_t index = 0;
   uint8_t transducer = 0;
   while (index < msg_length) {

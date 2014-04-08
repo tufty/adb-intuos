@@ -8,7 +8,6 @@
 #ifndef __ADB_CODEC_H__
 #define __ADB_CODEC_H__
 
-
 typedef struct {
   union
   {
@@ -26,7 +25,7 @@ typedef struct {
 } AdbPacket;
 
 void adb_init(void);
-void initiateAdbTransfer(AdbPacket* adbPacket, void (*done_callback)(uint8_t errorCode));
+void initiateAdbTransfer(volatile AdbPacket* adbPacket, void (*done_callback)(uint8_t errorCode));
 
 #define ADB_COMMAND_RESET 	0
 #define ADB_COMMAND_FLUSH       1

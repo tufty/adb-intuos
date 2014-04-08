@@ -25,7 +25,7 @@
 
 #include <avr/interrupt.h>
 #include "avr_util.h"
-#include "adb.h"
+#include "adb_codec.h"
 #include "led.h"
 
 #include <util/delay.h>
@@ -151,7 +151,7 @@ uint8_t proc_pending = 0; // set to "1" to trigger processing
 codecState state = idle;
 
 /** current ADB packet being transfered (in/out) */
-AdbPacket* itsAdbPacket;
+volatile AdbPacket* itsAdbPacket;
 
 #define RISING_EDGE	1
 #define FALLING_EDGE	0
@@ -453,7 +453,7 @@ static void resetDecoder()
 /**
    public entry point to initiate an ADB transaction on the bus
 */
-void initiateAdbTransfer(AdbPacket* adbPacket, void (*done_callback)(uint8_t errorCode))
+void initiateAdbTransfer(volatile AdbPacket* adbPacket, void (*done_callback)(uint8_t errorCode))
 {
   // reset
   resetDecoder();
