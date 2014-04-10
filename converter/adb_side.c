@@ -1,5 +1,6 @@
 #include "adb_side.h"
 #include "usb_side.h"
+#include "led.h"
 #include "shared_state.h"
 
 #include <string.h>
@@ -227,6 +228,7 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
 	/* transducers[transducer].touching = (msg[index] & 0x02) >> 1; */
 	/* set_location (transducer, (msg[index + 1] << 8) | msg[index + 2], (msg[index + 3] << 8) | msg[index + 4]); */
 	/* set_buttons (transducer, (msg[index + 5] << 16) | (msg[index + 6] << 8) | msg[index + 7]); */
+	send_message = 0;
 	index += 8;
 	break;
       case 0x04:     // 8 byte packet, location, tilt and ??? $1f6.b
@@ -236,6 +238,7 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
 	/* set_location (transducer, (msg[index + 1] << 8) | msg[index + 2], (msg[index + 3] << 8) | msg[index + 4]); */
 	/* set_1f6 (transducer,  (msg[index + 5] << 2) | (msg[index + 6] >> 6)); */
 	/* set_tilt (transducer, ((msg[index + 6] << 1) | (msg[index + 7] >> 7)) & 0x7f, (msg[index + 7] & 0x7f)); */
+	send_message = 0;
 	index += 8;
 	break;
       default:       // 8 byte packet, location, z, and 7 bit button mask - second packet for a 4d mouse
@@ -268,6 +271,7 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
       /* set_location (transducer, (msg[index + 1] << 8) | msg[index + 2], (msg[index + 3] << 8) | msg[index + 4]); */
       /* set_pressure (transducer, (msg[index + 5] << 2) | (msg[index + 6] >> 6)); */
       /* set_tilt (transducer, ((msg[index + 6] << 1) | (msg[index + 7] >> 7)) & 0x7f, (msg[index + 7] & 0x7f)); */
+      send_message = 0;
       index += 8;
       break;
     case 0xd0:       // 6 byte packet, location, pressure
@@ -275,6 +279,7 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
       /* transducers[transducer].state = 0xb8; */
       /* set_location (transducer, (msg[index + 1] << 8) | msg[index + 2], (msg[index + 3] << 8) | msg[index + 4]); */
       /* set_pressure (transducer, (msg[index + 5] << 2) | (msg[index] & 0x03)); */
+      send_message = 0;
       index += 6;
       break;
     case 0xc0:       // 6 byte packet, location, pressure	
@@ -283,6 +288,7 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
       /* transducers[transducer].touching = (msg[index] & 0x02) >> 1; */
       /* set_location (transducer, (msg[index + 1] << 8) | msg[index + 2], (msg[index + 3] << 8) | msg[index + 4]); */
       /* set_pressure (transducer, (msg[index + 5] << 2) | ((msg[index] >> 1) & 0x03)); */
+      send_message = 0;
       index += 6;
       break;
     case 0xb0:       // 6 byte packet, location and ??? $1f6.b
@@ -291,6 +297,7 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
       /* transducers[transducer].touching = (msg[index] & 0x02) >> 1; */
       /* set_location (transducer, (msg[index + 1] << 8) | msg[index + 2], (msg[index + 3] << 8) | msg[index + 4]); */
       /* set_if6 (transducer, (msg[index + 5] << 2) | (msg[index] & 0x03)); */
+      send_message = 0;
       index += 6;
       break;
     case 0xa0:       // 8 byte packet, location, tilt, pressure, 2 bit buttons : Stylus major packet
@@ -398,6 +405,7 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
       case STYLUS_AIRBRUSH:
       case MOUSE_2D:
       case CURSOR:
+	index += 8;  // ignore packet
 	send_message = 0;
 	break;
       }
@@ -451,10 +459,11 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
       /*   } */
       /* } */
 
-      if (send_message) {
-	queue_message(TOOL_UPDATE, transducer);
-      }
-
     }
+    if (send_message == 1) {
+      LED_TOGGLE;
+      queue_message(TOOL_UPDATE, transducer);
+      LED_TOGGLE;
+    } 
   }
 }

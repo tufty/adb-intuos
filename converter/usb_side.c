@@ -1,5 +1,9 @@
 #include "usb_side.h"
 #include "usb_side_priv.h"
+#include "avr_util.h"
+#include <avr/interrupt.h>
+#include "led.h"
+
 
 const product_id_t product_ids[] =
   {
@@ -176,6 +180,7 @@ wacom_report_t usb_report;
 
 // queue an update / proximity message
 void queue_message(message_type_t type, uint8_t index) {
+
   switch (type) {
   case TOOL_IN:
     populate_in_proximity(index, &usb_report);
@@ -189,7 +194,8 @@ void queue_message(message_type_t type, uint8_t index) {
   default:
     break;
   }
-  usb_send_packet(usb_report.bytes, 10, WACOM_INTUOS2_PEN_ENDPOINT, 50);
+
+  usb_send_packet(&usb_report, 10, WACOM_INTUOS2_PEN_ENDPOINT, 25);
 }
 
 void populate_in_proximity(uint8_t index, wacom_report_t * packet) {

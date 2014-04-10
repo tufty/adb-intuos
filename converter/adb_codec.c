@@ -695,7 +695,6 @@ static void inputCaptureInterrupt()
   TCNT3 = TCNT3 - capturedCounter;
 
   // adjust
-
   // time in microseconds (us)
   pulseTime = capturedCounter/TIMER3DIVISION_FOR_US;
 

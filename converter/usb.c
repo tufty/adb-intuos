@@ -129,7 +129,7 @@ uint8_t usb_configured(void)
  */
 int8_t usb_send_packet(const uint8_t *buffer, uint8_t size, uint8_t endpoint, uint8_t timeout)
 {
-  uint8_t intr_state;
+  uint8_t intr_state, timeout_target;
 
   if(size > endpointSize[endpoint])
     {
@@ -142,7 +142,7 @@ int8_t usb_send_packet(const uint8_t *buffer, uint8_t size, uint8_t endpoint, ui
     return -1;
   intr_state = SREG;
   cli();
-  tx_timeout_count = timeout;
+  timeout_target = UDFNUML + timeout;
   UENUM = endpoint;
   // wait for the FIFO to be ready to accept data
   while (1)
@@ -150,7 +150,7 @@ int8_t usb_send_packet(const uint8_t *buffer, uint8_t size, uint8_t endpoint, ui
       if (UEINTX & (1 << RWAL))
 	break;
       SREG = intr_state;
-      if (tx_timeout_count == 0)
+      if (UDFNUML == timeout_target)
 	return 0;
       if (!usb_configuration)
 	return -1;
