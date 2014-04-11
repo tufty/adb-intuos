@@ -26,11 +26,13 @@
 #include <stdint.h>
 #include <ctype.h>
 #include <util/delay.h>
+#include <util/atomic.h>
 #include "avr_util.h"
 #include "adb_codec.h"
 #include "adb_side.h"
 #include "usb_side.h"
 #include "led.h"
+#include "debug.h"
 
 #define CPU_PRESCALE(n) (CLKPR = 0x80, CLKPR = (n))
 
@@ -38,23 +40,6 @@
 volatile uint8_t adb_command_just_finished = 0;
 volatile AdbPacket the_packet;
 
-void error_condition(uint8_t code)
-{
-  LED_OFF;
-
-  while (1)
-    {
-      _delay_ms(2500);
-
-      for(uint8_t i = code;i>0;i--)
-	{
-	  LED_ON;
-	  _delay_ms(250);
-	  LED_OFF;
-	  _delay_ms(250);
-	}
-    }
-}
 
 void adb_callback(uint8_t error_code) {
   adb_command_just_finished = 1;
@@ -80,9 +65,9 @@ int main(void)
   // tablet type "automagically"
   _delay_ms(1000);  // Let the tablet power up
 
-  __BEGIN_CRITICAL_SECTION
-  adb_init();
-  __END_CRITICAL_SECTION
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    adb_init();
+  }
 
   // First action : talk R3
   adb_command_just_finished = 0;
@@ -98,12 +83,15 @@ int main(void)
   handle_r1_message(the_packet.datalen, the_packet.data);
 
   // At this point, we should be able to bring up USB, and get the correct configuration
-  __BEGIN_CRITICAL_SECTION
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
   usb_init();
-  __END_CRITICAL_SECTION
+  }
 
   // Wait for USB configuration to be done
   while (!usb_configured());
+
+  // Wait for a second to let the host OS catch up
+  _delay_ms(1000);
 
   // Send a couple of tool out messages to tell the driver what's in proximity
   queue_message(TOOL_OUT, 0);
@@ -142,12 +130,21 @@ int main(void)
   initiateAdbTransfer(&the_packet, &adb_callback);
 
   // The tablet is now up, we can start polling R0 for data
+  uint8_t copied_adb[8];
   while (1) {
     if(adb_command_just_finished) {
       adb_command_just_finished = 0;
       if (the_packet.datalen > 0) {
+	copied_adb[0] = the_packet.data[0];
+	copied_adb[1] = the_packet.data[1];
+	copied_adb[2] = the_packet.data[2];
+	copied_adb[3] = the_packet.data[3];
+	copied_adb[4] = the_packet.data[4];
+	copied_adb[5] = the_packet.data[5];
+	copied_adb[6] = the_packet.data[6];
+	copied_adb[7] = the_packet.data[7];
 	//	error_condition (the_packet.datalen);
-	handle_r0_message(the_packet.datalen, the_packet.data);
+	handle_r0_message(the_packet.datalen, copied_adb);
       }
       the_packet.address = 4;
       the_packet.command = ADB_COMMAND_TALK;
@@ -155,7 +152,7 @@ int main(void)
       the_packet.datalen = 0;
       initiateAdbTransfer(&the_packet, &adb_callback);
     }
-    _delay_ms(3);
+    _delay_ms(500);
   }
 }
 

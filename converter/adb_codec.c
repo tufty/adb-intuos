@@ -29,6 +29,7 @@
 #include "led.h"
 
 #include <util/delay.h>
+#include <util/atomic.h>
 
 //---------------------------------------------------------
 // General Mode of Operation - Single device ADB Host
@@ -112,39 +113,36 @@
 #define STOP2START_TIME_US		150
 
 
-typedef enum 
-  {
-    inactive,
-    idle,
-    attention,
-    sync,
-    header,
-    header_stop,
-    // out
-    stop_to_start_out,
-    start_out,
-    data_out,
-    stop_out,
-    // in
-    header_stop_high_in,
-    stop_to_start_in,
-    start_in,
-    data_in,
-    finished
-  } codecState;
+typedef enum {
+  inactive,
+  idle,
+  attention,
+  sync,
+  header,
+  header_stop,
+  // out
+  stop_to_start_out,
+  start_out,
+  data_out,
+  stop_out,
+  // in
+  header_stop_high_in,
+  stop_to_start_in,
+  start_in,
+  data_in,
+  finished
+} codecState;
 
-typedef enum 
-  {
-    begin,
-    end
-  } bitDecoderState;
+typedef enum {
+  begin,
+  end
+} bitDecoderState;
 
-typedef enum 
-  {
-    unfinished,
-    success,
-    failure		// invalid signal -- reset decoder
-  } ErrorStatus;
+typedef enum {
+  unfinished,
+  success,
+  failure		// invalid signal -- reset decoder
+} ErrorStatus;
 
 uint8_t proc_pending = 0; // set to "1" to trigger processing
 
@@ -179,22 +177,18 @@ uint16_t pulseTime;
 static void (*itsDoneCallback)(uint8_t errorCode) = 0;
 
 
-static inline void adb_businit()
-{
+static inline void adb_businit() {
   cbi(PORTC,7);	// input
   cbi(DDRC,7);	// Hi-Z
-
 }
 
-static inline void adb_forcelow()
-{
+static inline void adb_forcelow() {
   cbi(PORTC,7);	// low
   sbi(DDRC,7); 	// output low
 }
 
 /** Hi-Z requires a ~1k pullup on the bus */
-static inline void adb_highimpedance()
-{
+static inline void adb_highimpedance() {
   cbi(PORTC,7);	// low
   cbi(DDRC,7); 	// input (Hi-Z)
 }
@@ -203,55 +197,50 @@ static inline void adb_highimpedance()
 
 static void resetDecoder();
 
-static void trigFinished()
-{
+static void trigFinished() {
   if(itsDoneCallback)
     itsDoneCallback(0);
 
   resetDecoder();
 }
 
-static void signalError(byte errorCode)
-{
+static void signalError(byte errorCode) {
   if(itsDoneCallback)
     itsDoneCallback(errorCode);
 }
 
 //---------------------------------------------------------
 
-static inline void stopTimeout()
-{
-  // disable timeout interrupt
-  cbi(TIMSK3,OCIE3A);
+static inline void stopTimeout() {
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    // disable timeout interrupt
+    cbi(TIMSK3,OCIE3A);
+  }
 }
 
 uint16_t timeout_target;
 
-static void setTimeout(uint16_t us)
-{
+static void setTimeout(uint16_t us) {
   timeout_target = us * TIMER3DIVISION_FOR_US;
 
-  __BEGIN_CRITICAL_SECTION
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 
     // "clear" interrupt flag (by setting it)
     sbi(TIFR3,OCF3A);
 
-  // suppress interrupts to avoid breaking the
-  // "temporary" 8 bit register when writing
-  // the OCR3A 16 bit value
+    // suppress interrupts to avoid breaking the
+    // "temporary" 8 bit register when writing
+    // the OCR3A 16 bit value
 
-  if((timeout_target + 10) < (COMPENSATION_DELAY_US * TIMER3DIVISION_FOR_US))
-    {
+    if((timeout_target + 10) < (COMPENSATION_DELAY_US * TIMER3DIVISION_FOR_US)) {
       OCR3A = 10;
-    }
-  else
-    {
+    } else {
       OCR3A = timeout_target - (COMPENSATION_DELAY_US * TIMER3DIVISION_FOR_US);
     }
-  __END_CRITICAL_SECTION
 
     // enable timeout interrupt
     sbi(TIMSK3,OCIE3A);
+  }
 }
 
 //---------------------------------------------------------
@@ -259,44 +248,39 @@ static void setTimeout(uint16_t us)
 static int8_t encodedBits;
 static byte byteToEncode;
 
-static void initEncodeByte(byte bits)
-{
+static void initEncodeByte(byte bits) {
   byteToEncode = bits;
   encodedBits = 0;
   pulselevel = HIGH;
 }
 
-static ErrorStatus encodeByte()
-{
-  if(encodedBits == 8)
-    {
-      return success;
+static ErrorStatus encodeByte() {
+  if(encodedBits == 8) {
+    return success;
+  }
+
+  if(pulselevel == HIGH) { // level is currently HIGH
+    // start bit
+    adb_forcelow();
+    pulselevel = LOW;
+    if(byteToEncode & 0x80)
+      setTimeout(BIT_1_LOW_TIME_US);
+    else
+      setTimeout(BIT_0_LOW_TIME_US);
+  } else { // level is currently LOW
+    // bit phase 2
+    adb_highimpedance();
+    pulselevel = HIGH;
+
+    if(byteToEncode & 0x80) {
+      setTimeout(BIT_1_HIGH_TIME_US);
+    } else {
+      setTimeout(BIT_0_HIGH_TIME_US);
     }
 
-  if(pulselevel == HIGH) // level is currently HIGH
-    {
-      // start bit
-      adb_forcelow();
-      pulselevel = LOW;
-      if(byteToEncode & 0x80)
-	setTimeout(BIT_1_LOW_TIME_US);
-      else
-	setTimeout(BIT_0_LOW_TIME_US);
-    }
-  else // level is currently LOW
-    {
-      // bit phase 2
-      adb_highimpedance();
-      pulselevel = HIGH;
-
-      if(byteToEncode & 0x80)
-	setTimeout(BIT_1_HIGH_TIME_US);
-      else
-	setTimeout(BIT_0_HIGH_TIME_US);
-
-      byteToEncode <<= 1;
-      encodedBits++;
-    }
+    byteToEncode <<= 1;
+    encodedBits++;
+  }
 
   return unfinished;
 }
@@ -307,33 +291,29 @@ static ErrorStatus encodeByte()
 
 static byte encodeData_byteindex;
 
-static void initEncodeData()
-{
+static void initEncodeData() {
   encodeData_byteindex = 0;
 
   initEncodeByte(itsAdbPacket->data[0]);
 }
 
-static ErrorStatus encodeData()
-{
+static ErrorStatus encodeData() {
   ErrorStatus byteStatus = encodeByte();
 
-  switch(byteStatus)
-    {
-    case failure:
-      return failure;
-    case unfinished:
-      return unfinished;
-    case success:
-      break;
-    }
+  switch(byteStatus) {
+  case failure:
+    return failure;
+  case unfinished:
+    return unfinished;
+  case success:
+    break;
+  }
 
   encodeData_byteindex++;
 
-  if(encodeData_byteindex == itsAdbPacket->datalen)
-    {
-      return success;
-    }
+  if(encodeData_byteindex == itsAdbPacket->datalen) {
+    return success;
+  }
 
   initEncodeByte(itsAdbPacket->data[encodeData_byteindex]);
   return encodeByte();
@@ -345,46 +325,41 @@ static int8_t decodeBitNumber;
 static byte* decodedByte;
 static uint16_t decodeBitLowTime;
 
-static void initDecodeByte(byte* bits)
-{
+static void initDecodeByte(byte* bits) {
   decodedByte = bits;
   *decodedByte = 0;
   decodeBitNumber = 8;
 }
 
-static ErrorStatus decodeByte()
-{
-  if(pulselevel == LOW)
-    {
-      decodeBitLowTime = pulseTime;
-      return unfinished;
-    }
+static ErrorStatus decodeByte() {
+  if(pulselevel == LOW) {
+    decodeBitLowTime = pulseTime;
+    return unfinished;
+  }
 
   uint16_t bittime = decodeBitLowTime + pulseTime;
 
-  if(bittime < BIT_TIME_MIN_US)
-    {
-      signalError(17);	// bit time too small
-      return failure;
-    }
+  if(bittime < BIT_TIME_MIN_US) {
+    signalError(17);	// bit time too small
+    return failure;
+  }
 
-  if(bittime > BIT_TIME_MAX_US)
-    {
-      signalError(18);	// bit time too long
-      return failure;
-    }
+  if(bittime > BIT_TIME_MAX_US) {
+    signalError(18);	// bit time too long
+    return failure;
+  }
 
   *decodedByte <<= 1;
 
-  if(decodeBitLowTime < pulseTime)
+  if(decodeBitLowTime < pulseTime) {
     *decodedByte |= 1;
+  }
 
   decodeBitNumber--;
 
-  if(decodeBitNumber == 0)
-    {
-      return success;
-    }
+  if(decodeBitNumber == 0) {
+    return success;
+  }
 
   return unfinished;
 }
@@ -394,32 +369,28 @@ static ErrorStatus decodeByte()
 
 static byte decodeData_byte;
 
-static void initDecodeData()
-{
+static void initDecodeData() {
   itsAdbPacket->datalen = 0;
   initDecodeByte(&decodeData_byte);
 }
 
-static ErrorStatus decodeData()
-{
+static ErrorStatus decodeData() {
   ErrorStatus byteStatus = decodeByte();
-  switch(byteStatus)
-    {
-    case failure:
-      return failure;
-    case unfinished:
-      return unfinished;
-    case success:
-      break;
-    }
+  switch(byteStatus) {
+  case failure:
+    return failure;
+  case unfinished:
+    return unfinished;
+  case success:
+    break;
+  }
 
-  if(itsAdbPacket->datalen >= 8)
-    {
-      signalError(19);
+  if(itsAdbPacket->datalen >= 8) {
+    signalError(19);
 
-      // too much data!
-      return failure;
-    }
+    // too much data!
+    return failure;
+  }
 
   itsAdbPacket->data[itsAdbPacket->datalen] = decodeData_byte;
   itsAdbPacket->datalen++;
@@ -429,32 +400,29 @@ static ErrorStatus decodeData()
   return unfinished;
 }
 
-static void resetDecoder()
-{
+static void resetDecoder() {
   // reset whatever requires reseting at
   // any point in the ADB subsystem
 
-  __BEGIN_CRITICAL_SECTION
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 
     // reset Timer 3 counter
     TCNT3 = 0;
 
-  __END_CRITICAL_SECTION
-
     // abort/disable input capture interrupt
     cbi(TIMSK3, ICIE3);
-  // configure "falling edge" for the next capture
-  cbi(TCCR3B, ICES3);
+    // configure "falling edge" for the next capture
+    cbi(TCCR3B, ICES3);
 
-  // abort/disable timeout timer
-  stopTimeout();
+    // abort/disable timeout timer
+    stopTimeout();
+  }
 }
 
 /**
    public entry point to initiate an ADB transaction on the bus
 */
-void initiateAdbTransfer(volatile AdbPacket* adbPacket, void (*done_callback)(uint8_t errorCode))
-{
+void initiateAdbTransfer(volatile AdbPacket* adbPacket, void (*done_callback)(uint8_t errorCode)) {
   // reset
   resetDecoder();
 
@@ -471,15 +439,13 @@ void initiateAdbTransfer(volatile AdbPacket* adbPacket, void (*done_callback)(ui
   setTimeout(IDLE_TIME_US);
 }
 
-static void restartAdbTransaction()
-{
+static void restartAdbTransaction() {
   adb_forcelow();
   state = attention;
   setTimeout(RESET_IDLE_US);
 }
 
-static void errorAndResetDecoder(byte value)
-{
+static void errorAndResetDecoder(byte value) {
   resetDecoder();
 
   signalError(value);
@@ -488,8 +454,9 @@ static void errorAndResetDecoder(byte value)
 }
 
 
-static void timeoutInterrupt()
-{
+static void timeoutInterrupt() {
+  ErrorStatus status;
+
   // hold interrupts until the "real" timeout time has been reached
   while(TCNT3 < timeout_target) { ; }
 
@@ -502,192 +469,172 @@ static void timeoutInterrupt()
   // account for the time spent since the interrupt occurred
   TCNT3 = TCNT3 - timeout_target;
 
-  switch(state)
-    {
-    case inactive:
-      // nothing to do here
-      break;
-    case idle:
-      // check if bus appears "ready" (high)
-      //
-      // begin attention
-      adb_forcelow();
-      setTimeout(ATTENTION_TIME_US);
-      state = attention;
-      break;
+  switch(state) {
+  case inactive:
+    // nothing to do here
+    break;
+  case idle:
+    // check if bus appears "ready" (high)
+    //
+    // begin attention
+    adb_forcelow();
+    setTimeout(ATTENTION_TIME_US);
+    state = attention;
+    break;
 
-    case attention:
-      // begin sync
-      adb_highimpedance();
-      setTimeout(SYNC_TIME_US);
-      initEncodeByte(itsAdbPacket->headerRawByte);
-      state = sync;
-      break;
-    case sync:
-      state = header;
-      // fall through header state
-    case header:
+  case attention:
+    // begin sync
+    adb_highimpedance();
+    setTimeout(SYNC_TIME_US);
+    initEncodeByte(itsAdbPacket->headerRawByte);
+    state = sync;
+    break;
+  case sync:
+    state = header;
+    // fall through header state
+  case header:
+    status = encodeByte();
+
+    if(status == success)
       {
-	ErrorStatus status = encodeByte();
+	// begin header stop
 
-	if(status == success)
-	  {
-	    // begin header stop
+	// TODO: handle SRQs: (probably not needed)
 
-	    // TODO: handle SRQs: (probably not needed)
-
-	    adb_forcelow();
-	    setTimeout(BIT_0_LOW_TIME_US);
-	    state = header_stop;
-	    break;
-	  }
-	else if(status == failure)
-	  {
-	    restartAdbTransaction();
-	  }
-	break;
-      }
-    case header_stop:
-      {
-	adb_highimpedance(); // release bus
-
-	if(itsAdbPacket->command == ADB_COMMAND_TALK)
-	  {
-	    // prepare for reading:
-
-	    // wait till the end of the stop bit
-	    // before starting probing the bus
-
-	    setTimeout(BIT_0_HIGH_TIME_US); // wait a little before switching on the input capture
-	    state = header_stop_high_in;
-	    break;
-	  }
-	else
-	  {
-	    // start outputting (encoding) data bytes
-
-	    setTimeout(STOP2START_TIME_US);
-	    state = stop_to_start_out;
-	    break;
-	  }
-      }
-    case stop_to_start_out:
-      {
-	// begin start bit
 	adb_forcelow();
-	setTimeout(BIT_1_LOW_TIME_US);
-	state = start_out;
+	setTimeout(BIT_0_LOW_TIME_US);
+	state = header_stop;
 	break;
       }
-    case start_out:
-      // continue start bit
-      adb_highimpedance();
-      setTimeout(BIT_1_HIGH_TIME_US);
-      initEncodeData();
-      state = data_out;
-      break;
-    case data_out:
+    else if(status == failure)
       {
-	ErrorStatus status = encodeData();
-
-	if(status == success)
-	  {
-	    // begin stop bit
-	    adb_forcelow();
-	    setTimeout(BIT_0_LOW_TIME_US);
-	    state = stop_out;
-	  }
-	else if(status == failure)
-	  {
-	    restartAdbTransaction();
-	  }
-
-	break;
+	restartAdbTransaction();
       }
-    case stop_out:
+    break;
+  case header_stop:
+    adb_highimpedance(); // release bus
+
+    if(itsAdbPacket->command == ADB_COMMAND_TALK)
       {
-	adb_highimpedance();
-	setTimeout(BIT_0_HIGH_TIME_US);
-	state = finished;
+	// prepare for reading:
+
+	// wait till the end of the stop bit
+	// before starting probing the bus
+
+	setTimeout(BIT_0_HIGH_TIME_US); // wait a little before switching on the input capture
+	state = header_stop_high_in;
 	break;
       }
-    case finished:
+    else
       {
-	state = inactive;
-	trigFinished();
+	// start outputting (encoding) data bytes
+
+	setTimeout(STOP2START_TIME_US);
+	state = stop_to_start_out;
 	break;
       }
+  case stop_to_start_out:
+    // begin start bit
+    adb_forcelow();
+    setTimeout(BIT_1_LOW_TIME_US);
+    state = start_out;
+    break;
+  case start_out:
+    // continue start bit
+    adb_highimpedance();
+    setTimeout(BIT_1_HIGH_TIME_US);
+    initEncodeData();
+    state = data_out;
+    break;
+  case data_out:
+    status = encodeData();
 
-      // =======================================
-      // "_in" states: reading bits from device
-      // or more specifically inactivity timeouts
-      // =======================================
+    if(status == success)
+      {
+	// begin stop bit
+	adb_forcelow();
+	setTimeout(BIT_0_LOW_TIME_US);
+	state = stop_out;
+      }
+    else if(status == failure)
+      {
+	restartAdbTransaction();
+      }
 
-    case header_stop_high_in:
-      //---------------------------
-      // Turn on the Input Capture
-      //---------------------------
+    break;
+  case stop_out:
+    adb_highimpedance();
+    setTimeout(BIT_0_HIGH_TIME_US);
+    state = finished;
+    break;
+  case finished:
+    state = inactive;
+    trigFinished();
+    break;
 
-      // setup to trig on the next falling edge
-      cbi(TCCR3B, ICES3);
-      waitingOn = FALLING_EDGE;
+    // =======================================
+    // "_in" states: reading bits from device
+    // or more specifically inactivity timeouts
+    // =======================================
 
-      // clear Input Capture Flag by setting it
-      sbi(TIFR3, ICF3);
+  case header_stop_high_in:
+    //---------------------------
+    // Turn on the Input Capture
+    //---------------------------
 
-      // enable input capture interrupt
-      sbi(TIMSK3, ICIE3);
+    // setup to trig on the next falling edge
+    cbi(TCCR3B, ICES3);
+    waitingOn = FALLING_EDGE;
 
-      setTimeout(STOP2START_TIME_MAX_US);
-      state = stop_to_start_in;
-      break;
-    case stop_to_start_in:
-      // it appears that there is no response from the device
+    // clear Input Capture Flag by setting it
+    sbi(TIFR3, ICF3);
+
+    // enable input capture interrupt
+    sbi(TIMSK3, ICIE3);
+
+    setTimeout(STOP2START_TIME_MAX_US);
+    state = stop_to_start_in;
+    break;
+  case stop_to_start_in:
+    // it appears that there is no response from the device
+    trigFinished();
+    break;
+  case data_in:
+    // this is called essentially after the stop bit without
+    // any activity afterwards. This denotes the end of a packet
+
+    if(itsAdbPacket->datalen > 0 && decodeBitNumber == 8) {
+      // all ok
       trigFinished();
-      break;
-    case data_in:
-      // this is called essentially after the stop bit without
-      // any activity afterwards. This denotes the end of a packet
-
-      if(itsAdbPacket->datalen > 0 && decodeBitNumber == 8)
-	{
-	  // all ok
-	  trigFinished();
-	}
-      else
-	{
-	  // error condition
-	  errorAndResetDecoder(20); // no activity timeout while receiving data
-	}
-
-      state = inactive;
-      // reset timer value
-      break;
-    default:
-      state = idle;
-      break;
+    } else {
+      // error condition
+      errorAndResetDecoder(20); // no activity timeout while receiving data
     }
+
+    state = inactive;
+    // reset timer value
+    break;
+  default:
+    state = idle;
+    break;
+  }
 
 }
 
-static void inputCaptureInterrupt()
-{
+static void inputCaptureInterrupt() {
   //------------------------------------------------
   // toggle input config to wait for the next "edge"
   //------------------------------------------------
 
-  if(waitingOn == FALLING_EDGE)
-    {
-      waitingOn = RISING_EDGE;
-      sbi(TCCR3B, ICES3);
-      pulselevel = HIGH;
-    }
-  else
-    {
-      waitingOn = FALLING_EDGE;
-      cbi(TCCR3B, ICES3);
-      pulselevel = LOW;
-    }
+  if(waitingOn == FALLING_EDGE) {
+    waitingOn = RISING_EDGE;
+    sbi(TCCR3B, ICES3);
+    pulselevel = HIGH;
+  } else {
+    waitingOn = FALLING_EDGE;
+    cbi(TCCR3B, ICES3);
+    pulselevel = LOW;
+  }
 
   uint16_t capturedCounter = ICR3;
 
@@ -698,77 +645,68 @@ static void inputCaptureInterrupt()
   // time in microseconds (us)
   pulseTime = capturedCounter/TIMER3DIVISION_FOR_US;
 
-  switch(state)
-    {
-    default:
-      signalError(21); // invalid internal state on input capture interrupt
+  switch(state) {
+  default:
+    signalError(21); // invalid internal state on input capture interrupt
+    break;
+  case stop_to_start_in:
+    if(pulseTime < STOP2START_TIME_MIN_US) {
+      errorAndResetDecoder(13); // invalid stop2start (too small)
       break;
-    case stop_to_start_in:
-      if(pulseTime < STOP2START_TIME_MIN_US)
-	{
-	  errorAndResetDecoder(13); // invalid stop2start (too small)
-	  break;
-	}
-
-      if(pulseTime > STOP2START_TIME_MAX_US)
-	{
-	  // the timeout interrupt should catch this "case" instead
-	  // of here, but it is safer to handle it here as well
-	  errorAndResetDecoder(14); // invalid stop2start (too large)
-	  break;
-	}
-
-      state = start_in;
-      break;
-
-    case start_in:
-      {
-	if(pulselevel == LOW)
-	  {
-	    decodeBitLowTime = pulseTime;
-	    break;
-	  }
-
-	uint16_t bittime = decodeBitLowTime + pulseTime;
-
-	if(bittime < BIT_TIME_MIN_US ||
-	   bittime > BIT_TIME_MAX_US)
-	  {
-	    signalError(15);
-	    state = idle;	// invalid start bit
-	  }
-
-	if(pulseTime < decodeBitLowTime)
-	  {
-	    signalError(16);
-	    state = idle;	// invalid start bit
-	  }
-
-	state = data_in;
-	initDecodeData();
-	break;
-      }
-    case data_in:
-      {
-	ErrorStatus status = decodeData();
-
-	switch(status)
-	  {
-	  case success:	state = idle; break;
-	  case failure: 	state = idle; break;
-	  case unfinished: break;
-	  }
-
-	// the stop bit should trigger a timeout
-	setTimeout(BIT_TIME_MAX_US);
-
-	break;
-      }
     }
+
+    if(pulseTime > STOP2START_TIME_MAX_US) {
+      // the timeout interrupt should catch this "case" instead
+      // of here, but it is safer to handle it here as well
+      errorAndResetDecoder(14); // invalid stop2start (too large)
+      break;
+    }
+
+    state = start_in;
+    break;
+
+  case start_in:
+    {
+      if(pulselevel == LOW) {
+	decodeBitLowTime = pulseTime;
+	break;
+      }
+
+      uint16_t bittime = decodeBitLowTime + pulseTime;
+
+      if((bittime < BIT_TIME_MIN_US) || (bittime > BIT_TIME_MAX_US)) {
+	signalError(15);
+	state = idle;	// invalid start bit
+      }
+
+      if(pulseTime < decodeBitLowTime) {
+	signalError(16);
+	state = idle;	// invalid start bit
+      }
+
+      state = data_in;
+      initDecodeData();
+      break;
+    }
+  case data_in:
+    {
+      ErrorStatus status = decodeData();
+
+      switch(status) {
+      case success:	   state = idle; break;
+      case failure:    state = idle; break;
+      case unfinished: break;
+      }
+
+      // the stop bit should trigger a timeout
+      setTimeout(BIT_TIME_MAX_US);
+
+      break;
+    }
+  }
 }
 
-void adb_init()
-{
+void adb_init() {
   adb_businit();
   adb_highimpedance();
 
@@ -776,7 +714,7 @@ void adb_init()
 
   // Setup the Timer3
 
-  TCCR3A =	BITV(WGM30, 0) |
+  TCCR3A =  BITV(WGM30, 0) |
     BITV(WGM31, 0) |
     BITV(COM3C0, 0) |
     BITV(COM3C1, 0) |
@@ -806,13 +744,11 @@ void adb_init()
 //---------------------------------------------------------
 // Input Capture Interrupt
 
-ISR(TIMER3_CAPT_vect)
-{
+ISR(TIMER3_CAPT_vect) {
   inputCaptureInterrupt();
 }
 
-ISR(TIMER3_COMPA_vect)
-{
+ISR(TIMER3_COMPA_vect) {
   timeoutInterrupt();
 }
 

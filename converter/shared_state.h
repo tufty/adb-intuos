@@ -3,6 +3,6 @@
 
 #include "transducer.h"
 
-transducer_t transducers[2];
+extern transducer_t transducers[2];
 
 #endif

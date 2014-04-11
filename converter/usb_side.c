@@ -2,17 +2,17 @@
 #include "usb_side_priv.h"
 #include "avr_util.h"
 #include <avr/interrupt.h>
+#include <util/atomic.h>
 #include "led.h"
+#include "debug.h"
 
-
-const product_id_t product_ids[] =
-  {
-   {0x4100, L"XD-0405-U"},
-   {0x4200, L"XD-0608-U"},
-   {0x4300, L"XD-0912-U"},
-   {0x4400, L"XD-1212-U"},
-   {0x4800, L"XD-1218-U"}
-  };
+const product_id_t product_ids[] = {
+  {0x4100, L"XD-0405-U"},
+  {0x4200, L"XD-0608-U"},
+  {0x4300, L"XD-0912-U"},
+  {0x4400, L"XD-1212-U"},
+  {0x4800, L"XD-1218-U"}
+};
 
 // Number of products we fake
 const uint8_t n_product_ids = 5;
@@ -181,26 +181,28 @@ wacom_report_t usb_report;
 // queue an update / proximity message
 void queue_message(message_type_t type, uint8_t index) {
 
-  switch (type) {
-  case TOOL_IN:
-    populate_in_proximity(index, &usb_report);
-    break;
-  case TOOL_OUT:
-    populate_out_of_proximity(index, &usb_report);
-    break;
-  case TOOL_UPDATE:
-    populate_update(index, &usb_report);
-    break;
-  default:
-    break;
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    switch (type) {
+    case TOOL_IN:
+      populate_in_proximity(index, &usb_report);
+      break;
+    case TOOL_OUT:
+      populate_out_of_proximity(index, &usb_report);
+      break;
+    case TOOL_UPDATE:
+      populate_update(index, &usb_report);
+      break;
+    default:
+      break;
+    }
   }
-
+  LED_TOGGLE;
   usb_send_packet(&usb_report, 10, WACOM_INTUOS2_PEN_ENDPOINT, 25);
+  LED_TOGGLE;
 }
 
 void populate_in_proximity(uint8_t index, wacom_report_t * packet) {
   // zero everything
-  memset(packet, 0, sizeof(wacom_report_t));
   packet->bytes[0] = 0x02;
 
   // enter proximity packet type
@@ -221,6 +223,9 @@ void populate_in_proximity(uint8_t index, wacom_report_t * packet) {
   packet->bytes[5] = transducers[index].id >> 12;            // bits 12-19
   packet->bytes[6] = transducers[index].id >> 4;             // bits 4-11
   packet->bytes[7] |= transducers[index].id << 4;            // bits 0-3
+
+  // Zero last byte
+  packet->bytes[9] = 0x00;
 }
 
 void populate_out_of_proximity(uint8_t index, wacom_report_t * packet) {
@@ -240,12 +245,12 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
   packet->tool_index = index;
   packet->proximity = transducers[index].touching;
 
-  // Intuos 3 has twice the resoution of intuos 1, so multiply numbers by 2
-  packet->x = transducers[index].location_x << 1;
-  packet->y = transducers[index].location_y << 1;
+  // Intuos 3 has twice the resolution of intuos 1, so multiply numbers by 2
+  //packet->x = transducers[index].location_x << 1;
+  //packet->y = transducers[index].location_y << 1;
 
   // Now we've done the generic update stuff, time to go tool-specific
-  switch (transducers[index].type) {
+  switch (transducers[index].type & 0xff7) {
   case STYLUS_STANDARD:
     // populate pen buttons
     packet->bytes[1] |= (transducers[index].buttons & 0x03) << 1;
@@ -274,6 +279,10 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
     packet->mouse_4d_payload.z = transducers[index].z >> 2;
     break;
   default:
+    while(1) {
+      signal_pause();
+      signal_word_bcd(transducers[index].type & 0xffff, 0);
+    }
     break;
   }
 }    

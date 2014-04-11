@@ -5,6 +5,8 @@
 
 #include <string.h>
 
+transducer_t transducers[2];
+
 // Parser for "talk register 1" messages
 void handle_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
   if (msg_length == 0)
@@ -333,7 +335,7 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
       // extract transducer specific data
       transducer = (msg[index] & 0x10) >> 4;
       transducers[transducer].state = 0xc2;
-      transducers[transducer].type = ((uint16_t)msg[index + 1] << 8) | (msg[index + 2] >> 4);
+      transducers[transducer].type = ((uint16_t)msg[index + 1] << 4) | (msg[index + 2] >> 4);
       transducers[transducer].id = ((uint32_t)msg[index + 2] << 28) | ((uint32_t)msg[index + 3] << 20) | ((uint32_t)msg[index + 4] << 12) | ((uint32_t)msg[index + 5] << 4) | (msg[index + 6] >> 4);
       // initialise transducer shift values etc
       transducers[transducer].entered_proximity = 1;
@@ -461,9 +463,7 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
 
     }
     if (send_message == 1) {
-      LED_TOGGLE;
       queue_message(TOOL_UPDATE, transducer);
-      LED_TOGGLE;
     } 
   }
 }
