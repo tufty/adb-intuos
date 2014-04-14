@@ -2,10 +2,13 @@
 #include "usb_side.h"
 #include "led.h"
 #include "shared_state.h"
+#include "debug.h"
 
 #include <string.h>
 
 transducer_t transducers[2];
+uint16_t max_x;
+uint16_t max_y;
 
 // Parser for "talk register 1" messages
 void handle_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
@@ -16,8 +19,8 @@ void handle_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
   }
 
   uint16_t id_product = 0xdead;
-  uint16_t max_x = ((uint16_t)(msg[2]) << 8) | (uint16_t)msg[3];
-  uint16_t max_y = ((uint16_t)(msg[4]) << 8) | (uint16_t)msg[5];
+  max_x = ((uint16_t)(msg[2]) << 8) | (uint16_t)msg[3];
+  max_y = ((uint16_t)(msg[4]) << 8) | (uint16_t)msg[5];
 
   // Tablet ids taken from http://www.linux-usb.org/usb.ids
   // Little-endian
@@ -50,26 +53,25 @@ void handle_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
 // Averaging of locations
 void average_location(uint8_t average, uint16_t loc, uint16_t * p_loc, uint16_t * p_old_loc) {
   if (average) {
-    *p_loc = (loc + * p_old_loc) >> 1;
-    *p_old_loc = loc;
+    *p_loc = (loc + *p_old_loc) >> 1;
   } else {
     *p_loc = loc;
-    *p_old_loc = loc;
   }
+  *p_old_loc = loc;
 }
 
 // Process a location delta.  This one's a bit hairy
-void process_location_delta (uint8_t raw, uint8_t * shift, uint16_t * location, uint16_t * old_location) {
+void process_location_delta (uint8_t raw, uint8_t * shift, uint16_t * location, uint16_t * old_location, uint16_t loc_max) {
   uint8_t magnitude = raw & 0x0f;
   uint16_t delta = magnitude << *shift;
-  uint16_t new_location;
+  int32_t new_location = *location;
   int8_t new_shift = *shift;
 
   // Calculate new location
   if (raw & 0x10) {
-    new_location = *location - delta;
+    new_location -= delta;
   } else {
-    new_location = *location + delta;
+    new_location += delta;
   }
 
   // And the new shift value
@@ -86,6 +88,9 @@ void process_location_delta (uint8_t raw, uint8_t * shift, uint16_t * location, 
   // Make sure the shift value is positive
   *shift = (new_shift > 0) ? new_shift : 0;
 
+  if (new_location < 0) new_location = 0;
+  if (new_location > loc_max) new_location = loc_max;
+
   // there's an averaging step here, that the other delta handlers don't have
   average_location(1, new_location, location, old_location);
 }
@@ -93,13 +98,14 @@ void process_location_delta (uint8_t raw, uint8_t * shift, uint16_t * location, 
 void process_tilt_delta (uint8_t raw, uint8_t * shift, uint16_t * value) {
   uint8_t magnitude = raw & 0x07;
   uint16_t delta = magnitude << *shift;
+  int16_t new_value = *value;
   int8_t new_shift = *shift;
 
   // Calculate new location
   if (raw & 0x08) {
-    *value -= delta;
+    new_value -= delta;
   } else {
-    *value += delta;
+    new_value += delta;
   }
   switch (magnitude) {
   case 0x0:
@@ -118,22 +124,40 @@ void process_tilt_delta (uint8_t raw, uint8_t * shift, uint16_t * value) {
   }
   // Make sure the shift value is positive
   *shift = (new_shift > 0) ? new_shift : 0;
+  
+  if (new_value < 0) new_value = 0;
+  if (new_value > 0x7f) new_value = 0x7f;
+
+  *value = new_value;
 }
 
-
-void process_pressure_delta(uint8_t raw, uint8_t * shift, uint16_t * value) {
+void process_pressure_delta(uint8_t raw, uint8_t * shift, uint16_t * value, uint8_t * flag) {
   uint8_t magnitude = raw & 0x07;
 
   if (magnitude == 0x07) magnitude = 0x40;
 
   uint16_t delta = magnitude << *shift;
+  int16_t new_value = *value;
   int8_t new_shift = *shift;
 
   // Calculate new location
   if (raw & 0x08) {
-    *value -= delta;
+    new_value -= delta;
   } else {
-    *value += delta;
+    new_value += delta;
+  }
+
+  if (*flag) {
+    if (raw & 0x08) {
+      new_value = 0x09;
+    } else {
+      *flag = 0;
+    }
+  } else {
+    if (raw == 0x0f) {
+      new_value = 0x09;
+      *flag = 1;
+    }
   }
 
   switch (magnitude) {
@@ -153,6 +177,11 @@ void process_pressure_delta(uint8_t raw, uint8_t * shift, uint16_t * value) {
   }
   // Make sure the shift value is positive
   *shift = (new_shift > 0) ? new_shift : 0;
+
+  if (new_value < 0) new_value = 0;
+  if (new_value > 0x7f) new_value = 0x3f;
+
+  *value = new_value;
 }
 
 void process_rotation_delta (uint8_t raw, uint8_t * shift, uint16_t * value) {
@@ -204,20 +233,17 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
 	transducers[transducer].state = 0xaa;
 	transducers[transducer].touching = (msg[index + 5] & 0x80) >> 7;
 	// Average locations if necessary
-	average_location (transducers[transducer].entered_proximity, 
+	average_location (transducers[transducer].entered_proximity ? 0 : 1, 
 			  ((uint16_t)(msg[index + 1]) << 8) | msg[index + 2],
 			  &transducers[transducer].location_x,
 			  &transducers[transducer].location_x_old);
-	average_location (transducers[transducer].entered_proximity, 
+	average_location (transducers[transducer].entered_proximity ? 0 : 1, 
 			  ((uint16_t)(msg[index + 3]) << 8) | msg[index + 4],
 			  &transducers[transducer].location_y,
 			  &transducers[transducer].location_y_old);
-	// Calculate rotation.  urrrgly.
-	if (msg[index + 6] & 0x10) {
-	  transducers[transducer].rotation = 0x707 - ((((uint16_t)(msg[index + 5]) << 3) | (msg[index + 6] >> 5)) & 0x3ff);
-	} else {
-	  transducers[transducer].rotation = (((uint16_t)(msg[index + 5]) << 3) | (msg[index + 6] >> 5)) & 0x3ff;
-	}
+
+	transducers[transducer].rotation = (((uint16_t)(msg[index + 5]) << 3) | (msg[index + 6] >> 5)) & 0x3ff;
+	transducers[transducer].rotation_sign = msg[index + 6] & 0x10;
 
 	transducers[transducer].location_x_shift = 4;
 	transducers[transducer].location_y_shift = 4;
@@ -247,11 +273,11 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
 	transducers[transducer].state = 0xa8;
 	transducers[transducer].touching = (msg[index] & 0x02) >> 1;
 
-	average_location (transducers[transducer].entered_proximity, 
+	average_location (transducers[transducer].entered_proximity ? 0 : 1, 
 			  ((uint16_t)(msg[index + 1]) << 8) | msg[index + 2],
 			  &transducers[transducer].location_x,
 			  &transducers[transducer].location_x_old);
-	average_location (transducers[transducer].entered_proximity, 
+	average_location (transducers[transducer].entered_proximity ? 0 : 1, 
 			  ((uint16_t)(msg[index + 3]) << 8) | msg[index + 4],
 			  &transducers[transducer].location_y,
 			  &transducers[transducer].location_y_old);
@@ -307,11 +333,11 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
       transducers[transducer].state = 0xa0;
       transducers[transducer].touching = (msg[index] & 0x02) >> 1;
 
-      average_location (transducers[transducer].entered_proximity, 
+      average_location (transducers[transducer].entered_proximity ? 0 : 1, 
 			((uint16_t)(msg[index + 1]) << 8) | msg[index + 2],
 			&transducers[transducer].location_x,
 			&transducers[transducer].location_x_old);
-      average_location (transducers[transducer].entered_proximity, 
+      average_location (transducers[transducer].entered_proximity ? 0 : 1, 
 			((uint16_t)(msg[index + 3]) << 8) | msg[index + 4],
 			&transducers[transducer].location_y,
 			&transducers[transducer].location_y_old);
@@ -319,7 +345,7 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
       transducers[transducer].pressure = ((uint16_t)(msg[index + 5]) << 2) | (msg[index + 6] >> 6);
       transducers[transducer].tilt_x = ((msg[index + 6] << 1) | (msg[index + 7] >> 7)) & 0x7f;
       transducers[transducer].tilt_y = msg[index + 7] & 0x7f;
-      transducers[transducer].buttons = msg[index] & 0x06;
+      transducers[transducer].buttons = (msg[index] & 0x06) >> 1;
 
       transducers[transducer].location_x_shift = 4;
       transducers[transducer].location_y_shift = 4;
@@ -332,6 +358,13 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
       break;
     case 0x90:       // 7 byte packet, tool type and tool serial number (initial proximity packet)
     case 0x80:
+      if (index > 0) {
+	while (1) {
+	signal_pause();
+	signal_byte_bcd(index, 0);
+      }
+      }
+
       // extract transducer specific data
       transducer = (msg[index] & 0x10) >> 4;
       transducers[transducer].state = 0xc2;
@@ -347,6 +380,10 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
       transducers[transducer].z_shift = 3;
       transducers[transducer].barrel_pressure_shift= 3;
       transducers[transducer].rotation_shift = 0;
+      transducers[transducer].output_state = 0;
+      transducers[transducer].rotation_sign = 0;
+      transducers[transducer].pressure_sign = 0;
+      transducers[transducer].z_sign = 0;
       index += 7;
       queue_message(TOOL_IN, transducer);
       send_message = 0;
@@ -358,11 +395,13 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
       process_location_delta (((msg[index] & 0x3e) >> 1), 
 			      &transducers[transducer].location_x_shift,
 			      &transducers[transducer].location_x,
-			      &transducers[transducer].location_x_old);
+			      &transducers[transducer].location_x_old,
+			      max_x);
       process_location_delta (((msg[index] & 0x01) << 4) | (msg[index + 1] >> 4),
 			      &transducers[transducer].location_y_shift,
 			      &transducers[transducer].location_y,
-			      &transducers[transducer].location_y_old);
+			      &transducers[transducer].location_y_old,
+			      max_y);
 
       // Now switch based on transducer type.
       switch (transducers[transducer].type & 0xff7) {
@@ -370,9 +409,10 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
 	// this must be an stylus major packet (that's all we get)
 	process_pressure_delta(msg[index + 1] & 0x0f, 
 			       &transducers[transducer].pressure_shift,
-			       &transducers[transducer].pressure);
+			       &transducers[transducer].pressure,
+			       &transducers[transducer].pressure_sign);
 	index += 2;
-	if (index + 2 < msg_length) {
+	if (index < msg_length) {
 	  process_tilt_delta (msg[index + 2] >> 4,
 			      &transducers[transducer].tilt_x_shift,
 			      &transducers[transducer].tilt_x);
@@ -395,7 +435,8 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
 	} else /* a8 */ {
 	  process_pressure_delta(msg[index + 1] & 0x0f,
 				 &transducers[transducer].z_shift,
-				 &transducers[transducer].z);
+				 &transducers[transducer].z,
+				 &transducers[transducer].z_sign);
 
 	  transducers[transducer].state = 0xaa;
 	}

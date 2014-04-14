@@ -28,7 +28,11 @@ typedef enum gd_tool_type {
 
 typedef struct transducer {
   uint8_t state;
-
+  uint8_t output_state;
+  uint8_t rotation_sign;
+  uint8_t pressure_sign;
+  uint8_t z_sign;
+  
   uint32_t type;
   uint32_t id;
   uint16_t location_x;

@@ -152,7 +152,6 @@ int main(void)
       the_packet.datalen = 0;
       initiateAdbTransfer(&the_packet, &adb_callback);
     }
-    _delay_ms(500);
   }
 }
 

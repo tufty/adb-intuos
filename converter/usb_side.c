@@ -72,7 +72,8 @@ const uint8_t config_descriptor[34] = {
   0x81,		// bEndpointAddress  1 | 0x80
   0x3,		// bmAttributes (0x03=intr)
   0xa,0x0,      // wMaxPacketSize
-  0x5		// bInterval max number of ms between transmit packets
+  0x5,          // bInterval max number of ms between transmit packets
+
 }; 
 
 const uint8_t hid_report_descriptor[154] = {
@@ -243,11 +244,21 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
   packet->bytes[0] = 0x02;
 
   packet->tool_index = index;
-  packet->proximity = transducers[index].touching;
+  packet->proximity = 1; //transducers[index].touching;
 
   // Intuos 3 has twice the resolution of intuos 1, so multiply numbers by 2
   //packet->x = transducers[index].location_x << 1;
   //packet->y = transducers[index].location_y << 1;
+  packet->x_hi = transducers[index].location_x >> 8;
+  packet->y_hi = transducers[index].location_y >> 8;
+  packet->x_lo = transducers[index].location_x & 0xff;
+  packet->y_lo = transducers[index].location_y & 0xff;
+
+  if (transducers[index].touching) {
+    packet->distance = 0x0d;
+  } else {
+    packet->distance = 0x1f;
+  }
 
   // Now we've done the generic update stuff, time to go tool-specific
   switch (transducers[index].type & 0xff7) {
@@ -258,25 +269,36 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
     packet->bytes[1] |= 0xc0;
 
     // The pen specific stuff
-    packet->pen_payload.tilt_x = transducers[index].tilt_x;
-    packet->pen_payload.tilt_y = transducers[index].tilt_y;
+    packet->pen_payload.tilt_x = 0x40 - transducers[index].tilt_x;
+    packet->pen_payload.tilt_y = 0x40 - transducers[index].tilt_y;
     packet->pen_payload.pressure = transducers[index].pressure;
 
-    if (transducers[index].touching) {
-      packet->pen_payload.distance = 0x0d;
-    } else {
-      packet->pen_payload.distance = 0x1f;
-    }
     break;
   case MOUSE_4D:
-    // I think this means 4d mouse.
-    packet->bytes[1] |= 0xc8;
+    // Tell driver what packet we are.
+    packet->bit7 = 1;
+    packet->bit6 = 1;
+    packet->proximity = 1;
+    packet->bit3 = 1;
 
-    packet->mouse_4d_payload.rotation = transducers[index].rotation;
-    packet->mouse_4d_payload.buttons = transducers[index].buttons & 0x3f;
-    // Do this better, it's probably fucked, the wacom setup is complex
-    // May actually be closer to the raw value from the tablet (see also rotation)
-    packet->mouse_4d_payload.z = transducers[index].z >> 2;
+    if (transducers[index].output_state) {
+      // 4D Mouse second packet - rotation
+      packet->mouse_4d_payload_1.rotation = transducers[index].rotation;
+      packet->mouse_4d_payload_1.rotation_sign = transducers[index].rotation_sign;
+      
+      // Swap state
+      transducers[index].output_state = 0;
+    } else {
+      packet->mouse_4d_payload_0.z = transducers[index].z >> 2;
+      packet->mouse_4d_payload_0.z_sign = transducers[index].z_sign;
+      packet->mouse_4d_payload_0.buttons_low = transducers[index].buttons & 0x7;
+      packet->mouse_4d_payload_0.buttons_high = (transducers[index].buttons & 0x18) >> 3;
+
+      // Swap state
+      transducers[index].output_state = 1;
+    }
+    packet->bit1 = transducers[index].output_state;
+
     break;
   default:
     while(1) {
