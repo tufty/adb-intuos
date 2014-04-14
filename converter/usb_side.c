@@ -268,10 +268,9 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
     // And the mysterious top 2 bits
     packet->bytes[1] |= 0xc0;
 
-    // The pen specific stuff
-    packet->pen_payload.tilt_x = 0x40 - transducers[index].tilt_x;
-    packet->pen_payload.tilt_y = 0x40 - transducers[index].tilt_y;
-    packet->pen_payload.pressure = transducers[index].pressure;
+    packet->payload[0] = transducers[index].pressure >> 2;
+    packet->payload[1] = (transducers[index].pressure << 6) | (transducers[index].tilt_x >> 1);
+    packet->payload[2] = (transducers[index].tilt_x << 7) | transducers[index].tilt_y;
 
     break;
   case MOUSE_4D:
@@ -283,16 +282,15 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
 
     if (transducers[index].output_state) {
       // 4D Mouse second packet - rotation
-      packet->mouse_4d_payload_1.rotation = transducers[index].rotation;
-      packet->mouse_4d_payload_1.rotation_sign = transducers[index].rotation_sign;
-      
+      packet->payload[0] = transducers[index].rotation >> 2;
+      packet->payload[1] = (transducers[index].rotation << 6) | (transducers[index].rotation_sign << 5);
+     
       // Swap state
       transducers[index].output_state = 0;
     } else {
-      packet->mouse_4d_payload_0.z = transducers[index].z >> 2;
-      packet->mouse_4d_payload_0.z_sign = transducers[index].z_sign;
-      packet->mouse_4d_payload_0.buttons_low = transducers[index].buttons & 0x7;
-      packet->mouse_4d_payload_0.buttons_high = (transducers[index].buttons & 0x18) >> 3;
+      packet->payload[0] = transducers[index].z >> 2;
+      packet->payload[1] = (transducers[index].z << 6);
+      packet->payload[2] = ((transducers[index].buttons & 0x18) << 1) | (transducers[index].z_sign << 3) | (transducers[index].buttons & 0x7);
 
       // Swap state
       transducers[index].output_state = 1;

@@ -358,13 +358,6 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
       break;
     case 0x90:       // 7 byte packet, tool type and tool serial number (initial proximity packet)
     case 0x80:
-      if (index > 0) {
-	while (1) {
-	signal_pause();
-	signal_byte_bcd(index, 0);
-      }
-      }
-
       // extract transducer specific data
       transducer = (msg[index] & 0x10) >> 4;
       transducers[transducer].state = 0xc2;
