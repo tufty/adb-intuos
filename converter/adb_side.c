@@ -248,12 +248,16 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
 			  &transducers[transducer].location_y,
 			  &transducers[transducer].location_y_old);
 
+	// Rotation is reported here as a 10 bit value and sign.
 	transducers[transducer].rotation = ((uint16_t)((msg[index + 5]) & 0x7f) << 3) | (msg[index + 6] >> 5);
 	transducers[transducer].rotation_sign = msg[index + 6] & 0x10;
 
-	if (transducers[transducer].rotation_sign) {
-	  transducers[transducer].rotation = 0x707 - transducers[transducer].rotation;
-	}
+	// Delta operates on raw magnitude.  Need to deal with sign flips, probably
+	// Only normalise for export to USB handler.
+
+	// if (transducers[transducer].rotation_sign) {
+	//   transducers[transducer].rotation = 0x707 - transducers[transducer].rotation;
+	// }
 
 	transducers[transducer].location_x_shift = 4;
 	transducers[transducer].location_y_shift = 4;
@@ -450,9 +454,10 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
 				 &transducers[transducer].rotation);
 	  transducers[transducer].rotation_sign = msg[index + 1] & 0x01;
 
-	  if (transducers[transducer].rotation_sign) {
-	    transducers[transducer].rotation = 0x707 - transducers[transducer].rotation;
-	  }
+	  // Again, we should only normalise for output, or the delta calcs are screwed up
+	  // if (transducers[transducer].rotation_sign) {
+	  //   transducers[transducer].rotation = 0x707 - transducers[transducer].rotation;
+	  // }
 	  transducers[transducer].state = 0xaa;
 	}
 	index += 2;
