@@ -187,13 +187,14 @@ void process_pressure_delta(uint8_t raw, uint8_t * shift, uint16_t * value, uint
 void process_rotation_delta (uint8_t raw, uint8_t * shift, uint16_t * value) {
   uint8_t magnitude = raw & 0x03;
   uint16_t delta = magnitude << *shift;
+  uint16_t new_value = *value;
   int8_t new_shift = *shift;
 
   // Calculate new location
   if (raw & 0x04) {
-    *value -= delta;
+    new_value -= delta;
   } else {
-    *value += delta;
+    new_value += delta;
   }
   switch (magnitude) {
   case 0x0:
@@ -207,6 +208,11 @@ void process_rotation_delta (uint8_t raw, uint8_t * shift, uint16_t * value) {
   }
   // Make sure the shift value is positive
   *shift = (new_shift > 0) ? new_shift : 0;
+
+  if (new_value < 0) new_value = 0;
+  if (new_value > 0xe0e) new_value = 0xe0e;
+
+  *value = new_value;
 }
 
 
@@ -242,11 +248,16 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
 			  &transducers[transducer].location_y,
 			  &transducers[transducer].location_y_old);
 
-	transducers[transducer].rotation = (((uint16_t)(msg[index + 5]) << 3) | (msg[index + 6] >> 5)) & 0x3ff;
+	transducers[transducer].rotation = ((uint16_t)((msg[index + 5]) & 0x7f) << 3) | (msg[index + 6] >> 5);
 	transducers[transducer].rotation_sign = msg[index + 6] & 0x10;
+
+	if (transducers[transducer].rotation_sign) {
+	  transducers[transducer].rotation = 0x707 - transducers[transducer].rotation;
+	}
 
 	transducers[transducer].location_x_shift = 4;
 	transducers[transducer].location_y_shift = 4;
+	transducers[transducer].rotation_shift = 0;
 
 	index += 7;
 	break;
@@ -437,7 +448,9 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
 	  process_rotation_delta((msg[index + 1] & 0x0e) >> 1,
 				 &transducers[transducer].rotation_shift,
 				 &transducers[transducer].rotation);
-	  if (msg[index + 1] & 0x01) {
+	  transducers[transducer].rotation_sign = msg[index + 1] & 0x01;
+
+	  if (transducers[transducer].rotation_sign) {
 	    transducers[transducer].rotation = 0x707 - transducers[transducer].rotation;
 	  }
 	  transducers[transducer].state = 0xaa;

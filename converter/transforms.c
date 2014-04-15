@@ -24,14 +24,11 @@ uint16_t pressure_to_pressure(uint16_t raw) {
 }
 
 // Transform a rotation reading from source form to target form
-// Intuos 1 tablet reports 0 <= x <= 0xfff, with midpoint at 0x707
+// Intuos 1 tablet reports 0 <= x <= 0x7ff, with midpoint at 0x707
 // Driver expects magnitude 0 <= x <= 0x3ff followed by a sign bit
 // Rotation anticlockwise is -ve
-uint16_t rotation_to_rotation(uint16_t raw) {
-  uint8_t sign = raw > 0x707 ? 0 : 1;
-  uint16_t magnitude =  sign ? 0x707 - raw : raw - 0x707;
-  
-  return (magnitude & 0x7fe) | sign;
+uint16_t rotation_to_rotation(uint16_t raw, uint8_t sign) {
+  return (raw & 0x7fe) | sign;
 }
 
 // Transform a z reading from source form to target form

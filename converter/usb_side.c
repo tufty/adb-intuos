@@ -294,7 +294,7 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
 
     if (transducers[index].output_state == 0) {
       // 4D Mouse second packet - rotation
-      transformed = rotation_to_rotation(transducers[index].rotation);
+      transformed = rotation_to_rotation(transducers[index].rotation, transducers[index].rotation_sign);
 
       packet->payload[0] = transformed >> 3;
       packet->payload[1] = transformed << 5;
@@ -311,7 +311,10 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
       packet->payload[0] = transformed >> 3;
       packet->payload[1] = (transformed & 0x7fe) << 5;
 
-      packet->payload[2] = ((transducers[index].buttons & 0x18) << 1) | ((transformed & 0x01) << 3) | (transducers[index].buttons & 0x7);
+      // buttons are not laid out the same way as the serial tablets report them.
+      // In fact, the buttons are already laid out ready for the USB report, i.e
+      // [xxxx xxxx xx45 x321] meaning we can simply interpose the z sign bit
+      packet->payload[2] = (transducers[index].buttons & 0x37) | ((transformed & 0x01) << 3);
 
       // Swap state
       transducers[index].output_state = 0;
