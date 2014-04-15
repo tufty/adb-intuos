@@ -418,19 +418,18 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
       case MOUSE_4D:
 	// 4D mouse has 2 states
 	if (transducers[transducer].state == 0xaa) {
+	  process_pressure_delta(msg[index + 1] & 0x0f,
+				 &transducers[transducer].z_shift,
+				 &transducers[transducer].z,
+				 &transducers[transducer].z_sign);
+	  transducers[transducer].state = 0xa8;
+	} else /* a8 */ {
 	  process_rotation_delta((msg[index + 1] & 0x0e) >> 1,
 				 &transducers[transducer].rotation_shift,
 				 &transducers[transducer].rotation);
 	  if (msg[index + 1] & 0x01) {
 	    transducers[transducer].rotation = 0x707 - transducers[transducer].rotation;
 	  }
-	  transducers[transducer].state = 0xa8;
-	} else /* a8 */ {
-	  process_pressure_delta(msg[index + 1] & 0x0f,
-				 &transducers[transducer].z_shift,
-				 &transducers[transducer].z,
-				 &transducers[transducer].z_sign);
-
 	  transducers[transducer].state = 0xaa;
 	}
 	index += 2;

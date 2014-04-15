@@ -280,20 +280,24 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
     packet->proximity = 1;
     packet->bit3 = 1;
 
-    if (transducers[index].output_state) {
+    if (transducers[index].output_state == 0) {
       // 4D Mouse second packet - rotation
       packet->payload[0] = transducers[index].rotation >> 2;
       packet->payload[1] = (transducers[index].rotation << 6) | (transducers[index].rotation_sign << 5);
      
       // Swap state
-      transducers[index].output_state = 0;
+      transducers[index].output_state = 1;
     } else {
+      // Deal with z sign here
+      // Tablet reports -1024 <= z <= 1023
+      // Driver wants 10 bit magnitude in payload 0-1, and a separate sign bit interleaved with the biuttons  
+
       packet->payload[0] = transducers[index].z >> 2;
       packet->payload[1] = (transducers[index].z << 6);
       packet->payload[2] = ((transducers[index].buttons & 0x18) << 1) | (transducers[index].z_sign << 3) | (transducers[index].buttons & 0x7);
 
       // Swap state
-      transducers[index].output_state = 1;
+      transducers[index].output_state = 0;
     }
     packet->bit1 = transducers[index].output_state;
 
