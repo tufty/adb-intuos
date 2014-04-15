@@ -1,6 +1,7 @@
 #include "usb_side.h"
 #include "usb_side_priv.h"
 #include "avr_util.h"
+#include "transforms.h"
 #include <avr/interrupt.h>
 #include <util/atomic.h>
 #include "led.h"
@@ -239,26 +240,29 @@ void populate_out_of_proximity(uint8_t index, wacom_report_t * packet) {
 }
 
 void populate_update(uint8_t index, wacom_report_t * packet) {
+  uint16_t transformed;
   // zero everything
   memset(packet, 0, sizeof(wacom_report_t));
   packet->bytes[0] = 0x02;
 
+  // Stuff that doesn't require a transform
   packet->tool_index = index;
   packet->proximity = 1; //transducers[index].touching;
-
-  // Intuos 3 has twice the resolution of intuos 1, so multiply numbers by 2
-  //packet->x = transducers[index].location_x << 1;
-  //packet->y = transducers[index].location_y << 1;
-  packet->x_hi = transducers[index].location_x >> 8;
-  packet->y_hi = transducers[index].location_y >> 8;
-  packet->x_lo = transducers[index].location_x & 0xff;
-  packet->y_lo = transducers[index].location_y & 0xff;
 
   if (transducers[index].touching) {
     packet->distance = 0x0d;
   } else {
     packet->distance = 0x1f;
   }
+
+  // Transformed data
+  transformed = location_to_location(transducers[index].location_x);
+  packet->x_hi = transformed >> 8;
+  packet->x_lo = transformed & 0xff;
+
+  transformed = location_to_location(transducers[index].location_y);
+  packet->y_hi = transformed >> 8;
+  packet->y_lo = transformed & 0xff;
 
   // Now we've done the generic update stuff, time to go tool-specific
   switch (transducers[index].type & 0xff7) {
@@ -268,9 +272,17 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
     // And the mysterious top 2 bits
     packet->bytes[1] |= 0xc0;
 
-    packet->payload[0] = transducers[index].pressure >> 2;
-    packet->payload[1] = (transducers[index].pressure << 6) | (transducers[index].tilt_x >> 1);
-    packet->payload[2] = (transducers[index].tilt_x << 7) | transducers[index].tilt_y;
+    // pressure reading
+    transformed = pressure_to_pressure(transducers[index].pressure);
+    packet->payload[0] = transformed >> 2;
+    packet->payload[1] = transformed << 6;
+
+    transformed = tilt_to_tilt(transducers[index].tilt_x);
+    packet->payload[1] |= transformed >> 1;
+    packet->payload[2] = transformed << 7;
+
+    transformed = tilt_to_tilt(transducers[index].tilt_y);
+    packet->payload[2] |= transformed;
 
     break;
   case MOUSE_4D:
@@ -282,8 +294,10 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
 
     if (transducers[index].output_state == 0) {
       // 4D Mouse second packet - rotation
-      packet->payload[0] = transducers[index].rotation >> 2;
-      packet->payload[1] = (transducers[index].rotation << 6) | (transducers[index].rotation_sign << 5);
+      transformed = rotation_to_rotation(transducers[index].rotation);
+
+      packet->payload[0] = transformed >> 3;
+      packet->payload[1] = transformed << 5;
      
       // Swap state
       transducers[index].output_state = 1;
@@ -291,10 +305,13 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
       // Deal with z sign here
       // Tablet reports -1024 <= z <= 1023
       // Driver wants 10 bit magnitude in payload 0-1, and a separate sign bit interleaved with the biuttons  
+      
+      transformed = z_to_z(transducers[index].z);
 
-      packet->payload[0] = transducers[index].z >> 2;
-      packet->payload[1] = (transducers[index].z << 6);
-      packet->payload[2] = ((transducers[index].buttons & 0x18) << 1) | (transducers[index].z_sign << 3) | (transducers[index].buttons & 0x7);
+      packet->payload[0] = transformed >> 3;
+      packet->payload[1] = (transformed & 0x7fe) << 5;
+
+      packet->payload[2] = ((transducers[index].buttons & 0x18) << 1) | ((transformed & 0x01) << 3) | (transducers[index].buttons & 0x7);
 
       // Swap state
       transducers[index].output_state = 0;

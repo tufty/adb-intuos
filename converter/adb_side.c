@@ -179,7 +179,7 @@ void process_pressure_delta(uint8_t raw, uint8_t * shift, uint16_t * value, uint
   *shift = (new_shift > 0) ? new_shift : 0;
 
   if (new_value < 0) new_value = 0;
-  if (new_value > 0x7f) new_value = 0x3f;
+  if (new_value > 0x3ff) new_value = 0x3ff;
 
   *value = new_value;
 }
@@ -404,6 +404,16 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
 			       &transducers[transducer].pressure_shift,
 			       &transducers[transducer].pressure,
 			       &transducers[transducer].pressure_sign);
+
+	// Deal with touching / not touching
+	if (transducers[transducer].pressure == 0) {
+	  transducers[transducer].touching = 0;
+	  // reset shift once we're off the surface ?
+	  transducers[transducer].pressure_shift = 3;
+	} else {
+	  transducers[transducer].touching = 1;
+	}
+
 	index += 2;
 	if (index < msg_length) {
 	  process_tilt_delta (msg[index + 2] >> 4,
