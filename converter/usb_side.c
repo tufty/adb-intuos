@@ -303,13 +303,10 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
       transducers[index].output_state = 1;
     } else {
       // Deal with z sign here
-      // Tablet reports 10 bits, -1024 <= z <= 1023
-      // Driver wants 10 bit magnitude in payload 0-1, and a separate sign bit interleaved with the buttons  
-      
       transformed = z_to_z(transducers[index].z);
 
-      packet->payload[0] = (transformed & 0x3ff) >> 3;
-      packet->payload[1] = (transformed & 0x3fe) << 5;
+      packet->payload[0] = (transformed & 0x1ff) >> 3;
+      packet->payload[1] = (transformed & 0x1fe) << 5;
 
       // buttons are not laid out the same way as the serial tablets report them.
       // In fact, the buttons are already laid out ready for the USB report, i.e

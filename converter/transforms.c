@@ -41,9 +41,11 @@ uint16_t rotation_to_rotation(uint16_t raw, uint8_t sign) {
 // deal with it. 
 uint16_t z_to_z(uint16_t raw) {
   uint8_t sign = raw > 0x1ff ? 0 : 1;
-  uint16_t magnitude = sign ? 0x1ff - raw : raw - 0x1ff;
+  uint16_t magnitude = sign ? raw : raw;
 
-  return (magnitude & 0x1fe) | sign;
+  // shift sign-adjusted raw value (effectively) 2 bits to the right and 
+  // graft on the sign bit.
+  return ((magnitude & 0x3fc) >> 1) | sign;
 }
 
 #endif
