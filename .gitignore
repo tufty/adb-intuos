@@ -8,3 +8,4 @@
 *.map
 *.sym
 .dep
+/converter/intuos_converter.hex
