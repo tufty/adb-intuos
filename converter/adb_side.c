@@ -64,7 +64,7 @@ void average_location(uint8_t average, uint16_t loc, uint16_t * p_loc, uint16_t 
 void process_location_delta (uint8_t raw, uint8_t * shift, uint16_t * location, uint16_t * old_location, uint16_t loc_max) {
   uint8_t magnitude = raw & 0x0f;
   uint16_t delta = magnitude << *shift;
-  int32_t new_location = *location;
+  int32_t new_location = *old_location;
   int8_t new_shift = *shift;
 
   // Calculate new location
