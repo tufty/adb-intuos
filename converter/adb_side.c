@@ -384,8 +384,8 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
 
       transducers[transducer].location_x_shift = 4;
       transducers[transducer].location_y_shift = 4;
-      transducers[transducer].tilt_x_shift = 4;
-      transducers[transducer].tilt_y_shift = 4;
+      transducers[transducer].tilt_x_shift = 2;
+      transducers[transducer].tilt_y_shift = 2;
       transducers[transducer].pressure_shift = 3;
 
       transducers[transducer].entered_proximity = 0;
@@ -449,10 +449,10 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
 
 	index += 2;
 	if (index < msg_length) {
-	  process_tilt_delta (msg[index + 2] >> 4,
+	  process_tilt_delta (msg[index] >> 4,
 			      &transducers[transducer].tilt_x_shift,
 			      &transducers[transducer].tilt_x);
-	  process_tilt_delta (msg[index + 2] & 0x0f,
+	  process_tilt_delta (msg[index] & 0x0f,
 			      &transducers[transducer].tilt_y_shift,
 			      &transducers[transducer].tilt_y);
 	  index += 1;

@@ -34,7 +34,7 @@ uint16_t location_to_location(uint16_t raw) {
 // Transform a tilt reading in source form to target form
 // Again, effectively a null op for intuos2, values are identical
 uint8_t tilt_to_tilt(uint8_t raw) {
-  return (raw - 0x40) & 0x7f;
+  return raw & 0x7f;
 }
 
 // Transform a pressure reading in source form to target form
