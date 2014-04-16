@@ -443,8 +443,6 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
 	// Deal with touching / not touching
 	if (transducers[transducer].pressure == 0) {
 	  transducers[transducer].touching = 0;
-	  // reset shift once we're off the surface ?
-	  transducers[transducer].pressure_shift = 3;
 	} else {
 	  transducers[transducer].touching = 1;
 	}
