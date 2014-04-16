@@ -324,16 +324,16 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
       // Swap state
       transducers[index].output_state = 1;
     } else {
-      // Deal with z sign here
+      // 4D mouse - first packet : wheel and buttons
       transformed = z_to_z(transducers[index].z);
 
-      packet->payload[0] = (transformed & 0x1ff) >> 3;
-      packet->payload[1] = (transformed & 0x1fe) << 5;
+      packet->payload[0] = (transformed & 0xff) >> 2;
+      packet->payload[1] = (transformed & 0xff) << 6;
 
       // buttons are not laid out the same way as the serial tablets report them.
       // In fact, the buttons are already laid out ready for the USB report, i.e
-      // [xxxx xxxx xx45 x321] meaning we can simply interpose the z sign bit
-      packet->payload[2] = (transducers[index].buttons & 0x37) | ((transformed & 0x01) << 3);
+      // [xxxx xxxx xx45 w321] where w is the sign of the wheel
+      packet->payload[2] = (transducers[index].buttons & 0x3f);
 
       // Swap state
       transducers[index].output_state = 0;

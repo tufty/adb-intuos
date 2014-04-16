@@ -64,8 +64,8 @@ What's supported
 * Intuos 4D Mouse : partial support
 * * Full resolution location tracking (2540lpi, up to 200 pps)
 * * All buttons supported
-* * Rotation
-* * Wheel (partial support)
+* * Rotation (may be inverted)
+* * Scroll / throttle wheel
 
 What's not supported
 --------------------
@@ -84,7 +84,6 @@ To Do
 -----
 
 * Check 4d mouse rotation (may be inverted, need to find some rotation-aware software)
-* Sort out the sign of 4d mouse wheel reports.
 * Get hold of some other tools - 2D mouse, airbrush, inking pen, stroke pen, grip pen, lens cursor
 * Incorporate support for ultrapad series, calcomp tablets.
 * Support imitating Intuos3 or higher, allowing use of more recent drivers.

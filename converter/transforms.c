@@ -55,17 +55,11 @@ uint16_t rotation_to_rotation(uint16_t raw, uint8_t sign) {
 // Z represents the 4d mouse wheel
 // Intuos 1 tablet reports 0 <= x <= 3ff
 // Driver expects 0 <= x <= 0xff + sign bit
-// Similar approach to rotation, unsigned magnitude and separate
-// sign bit.  The data itself is spread over the USB packet, but
-// we'll interleave the same way as for rotation, let the USB stuffer
-// deal with it. 
+// We get the sign bit with the button packet, pre-interleaved for the
+// USB report so we only need to deal with scaling the raw value
 uint16_t z_to_z(uint16_t raw) {
-  uint8_t sign = raw > 0x1ff ? 0 : 1;
-  uint16_t magnitude = sign ? raw : raw;
-
-  // shift sign-adjusted raw value (effectively) 2 bits to the right and 
-  // graft on the sign bit.
-  return ((magnitude & 0x3fc) >> 1) | sign;
+  // shift raw value 2 bits to the right
+  return (raw & 0x3fc) >> 2;
 }
 
 #endif
