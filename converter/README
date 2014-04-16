@@ -15,17 +15,37 @@ with the Intuos tablets.  The latter part of this was made harder by not actuall
 tools to do the job, and having to develop those tools first (using the wonderful "petite
 chez scheme").
 
+The converter itself would be hard to make, were it not for pjrc's rather nifty and inexpensive
+"Teensy" range of microcontrollers, which are not only easy to use, but also small enough to 
+allow placement inside the casing of a Wacom tablet.
+
+Obviously, none of this would be possible at all were it not for the work of Wacom themselves,
+and although they were unable to help directly for commercial / legal reasons, I can ony 
+admire the work they evidently put into the Intuos range of tablets in order to get around the
+restrictions of ADB's low performance.  Wacom's engineers obviously cared enough about truth
+in advertising to make sure that "up to 200 samples per second" really meant "200 samples
+per second, 99% of the time", regardless of how improable that seems on the surface.
+
+The other things that made this possible are the GNU Compiler Collection (gcc), and Richard
+Stallman's eponymous "Emacs", which I simply can't live without.
+
+Waxbee : http://code.google.com/p/waxbee
+Chez Scheme : http://www.scheme.com
+Teensy 2 : http://www.pjrc.com
+Wacom : http://www.wacom.com
+gcc and emacs : http://www.gnu.org
+
 What this does
 --------------
 
 Effectively it's a "brain bypass" for the tablet.  A small AVR microcontroller board 
 (the "Teensy 2.0" from pjrc.com) sits between the host computer and the tablet itself, 
 identifying itself as an Intuos 2 tablet to the computer, and talking the ADB intuos 1 
-protocol to the tablet, converting dat formats as necessary.  This allows use of a 
+protocol to the tablet, converting data formats as necessary.  This allows use of a 
 "stock" Wacom driver supporting the Intuos 2 range of tablets on the host computer.
 
 Intuos 2 was chosen because it's the last range of tablets supporting dual-track.  
-Unfortunately, this restricts the host comuter to using the v6.20 driver from Wacom, and
+Unfortunately, this restricts the host computer to using the v6.20 driver from Wacom, and
 therefore may preclude use on Windows 8.
 
 What's supported
@@ -50,7 +70,7 @@ What's supported
 What's not supported
 --------------------
 
-Tools other than the standard pen and 4d mouse.  
+Tools other than the standard pen and 4d mouse.  Yet.
 
 What's needed to use this on your ADB-equipped Intuos tablet
 ------------------------------------------------------------
@@ -67,4 +87,4 @@ To Do
 * Sort out the sign of 4d mouse wheel reports.
 * Get hold of some other tools - 2D mouse, airbrush, inking pen, stroke pen, grip pen, lens cursor
 * Incorporate support for ultrapad series, calcomp tablets.
- 
+* Support imitating Intuos3 or higher, allowing use of more recent drivers.
