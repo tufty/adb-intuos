@@ -27,7 +27,7 @@ in advertising to make sure that "up to 200 samples per second" really meant "20
 per second, 99% of the time", regardless of how improable that seems on the surface.
 
 The other things that made this possible are the GNU Compiler Collection (gcc), and Richard
-Stallman's eponymous "Emacs", which I simply can't live without.
+Stallman's remarkable "Emacs", which I simply can't live without.
 
 Waxbee : http://code.google.com/p/waxbee
 Chez Scheme : http://www.scheme.com
