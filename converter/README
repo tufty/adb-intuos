@@ -1,0 +1,70 @@
+This is a largely proof-of-concept USB converter for ADB-equipped Intuos tablets.
+
+Credits
+-------
+
+Work on this has been heavily inspired by Bernard Poulin's stellar work on Waxbee, which 
+converts serial-equipped wacom tablets, and the ultrapad / artZ series of ADB tablets,
+to USB.  Indeed, large portions of the low level ADB and USB handling code have been pulled
+pretty much direct from Waxbee.  Without Bernard, I'd still be in the mire of making 
+OSX-specific drivers.
+
+Figuring out the Intuos ADB protocol has been a mix of dumping ADB traffic, oscilloscope 
+traces (again thanks to Bernard), and manual decompiling of the original Mac driver supplied
+with the Intuos tablets.  The latter part of this was made harder by not actually having the 
+tools to do the job, and having to develop those tools first (using the wonderful "petite
+chez scheme").
+
+What this does
+--------------
+
+Effectively it's a "brain bypass" for the tablet.  A small AVR microcontroller board 
+(the "Teensy 2.0" from pjrc.com) sits between the host computer and the tablet itself, 
+identifying itself as an Intuos 2 tablet to the computer, and talking the ADB intuos 1 
+protocol to the tablet, converting dat formats as necessary.  This allows use of a 
+"stock" Wacom driver supporting the Intuos 2 range of tablets on the host computer.
+
+Intuos 2 was chosen because it's the last range of tablets supporting dual-track.  
+Unfortunately, this restricts the host comuter to using the v6.20 driver from Wacom, and
+therefore may preclude use on Windows 8.
+
+What's supported
+----------------
+
+* Automatic detection of tablet type, and identification as an "equivalent" Intuos 2.
+* Dual tool tracking
+* Tool ID (allowing different settings for different, same model, tools on the tablet)
+* Tablet button bar
+* Intuos standard pen : fully supported
+* * Full resolution location tracking (2540lpi, up to 200 pps)
+* * 1024 pressure levels
+* * +- 60 degrees tilt in X and Y directions
+* * Side buttons
+* * Eraser
+* Intuos 4D Mouse : partial support
+* * Full resolution location tracking (2540lpi, up to 200 pps)
+* * All buttons supported
+* * Rotation
+* * Wheel (partial support)
+
+What's not supported
+--------------------
+
+Tools other than the standard pen and 4d mouse.  
+
+What's needed to use this on your ADB-equipped Intuos tablet
+------------------------------------------------------------
+
+1 "Teensy 2.0" AVR board.
+1 pull-up resistor.
+Soldering skills.
+Dremel / box cutter etc and a stedy hand for "neat" fitment of teensy in tablet housing.
+
+To Do
+-----
+
+* Check 4d mouse rotation (may be inverted, need to find some rotation-aware software)
+* Sort out the sign of 4d mouse wheel reports.
+* Get hold of some other tools - 2D mouse, airbrush, inking pen, stroke pen, grip pen, lens cursor
+* Incorporate support for ultrapad series, calcomp tablets.
+ 
