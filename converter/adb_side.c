@@ -27,6 +27,7 @@
 #include <string.h>
 
 transducer_t transducers[2];
+tablet_type_t tablet_family;
 uint16_t max_x;
 uint16_t max_y;
 
@@ -236,7 +237,7 @@ void process_rotation_delta (uint8_t raw, uint8_t * shift, uint16_t * value) {
 }
 
 
-void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
+void handle_gd_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
   uint8_t index = 0;
   uint8_t transducer = 0;
   while (index < msg_length) {
@@ -544,5 +545,79 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
     if (send_message == 1) {
       queue_message(TOOL_UPDATE, transducer);
     } 
+  }
+}
+
+// Handler for Ultrapad r0 message
+void handle_ud_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
+  // Not sure about this, only the 1212 model supports dual track anyway.
+  // Seems to be the only bit that's free, so must be tool id, right?
+  uint8_t index = msg[0] & 0x80 ? 0 : 1;
+  
+  switch (msg[0] & 0x40) {
+  case 0x40:
+    // Proximity flag is set, this is a tool report
+    if (transducers[index].type == 0) {
+      // Entering proximity.  Identify the tool type.
+      if (msg[0] & 0x20) {
+	if (msg[0] & 0x04) {
+	  transducers[index].type = STYLUS_STANDARD_INVERTED;
+	} else {
+	  transducers[index].type = STYLUS_STANDARD;
+	}
+	transducers[index].id = 0x016002cd;  // Bernard's Intuos 2 pen
+      } else {
+	transducers[index].type = CURSOR;
+	transducers[index].id = 0xfe9ffd32;  // Invert Bernards's Intuos 2 Pen
+      }
+      queue_message(TOOL_IN, index);
+    }
+    
+    transducers[index].location_x = ((uint16_t)msg[1] << 8) | msg[2];
+    transducers[index].location_x = ((uint16_t)msg[3] << 8) | msg[4];
+
+    switch (transducers[index].type) {
+    case STYLUS_STANDARD:
+      transducers[index].buttons = (msg[0] & 0x06) >> 1;
+      // Drop through
+    case STYLUS_STANDARD_INVERTED:
+      transducers[index].touching = msg[0] & 0x01;
+
+      transducers[index].pressure = msg[5];
+      transducers[index].tilt_x = msg[6];
+      transducers[index].tilt_y = msg[7];
+      break;
+    default:
+      // Cursor
+      // Ultrapad cursor only has 4 buttons, intuos has 5.
+      transducers[index].buttons = msg[0] & 0x0f;
+      transducers[index].touching = 1;
+      break;
+    }
+    queue_message(TOOL_UPDATE, index);
+    break;
+  default:
+    if (msg[0] & 0x10) {
+      // Macro button click.  Need to decide how to handle this.
+    } else {
+      // Out of proximity.
+      queue_message(TOOL_OUT, index);
+      memset((void*)&(transducers[index]), 0, sizeof(transducer_t));
+    }
+    break;
+  }
+}
+
+// Overall r0 message handler
+void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
+  switch (tablet_family) {
+  case INTUOS:
+    handle_gd_r0_message(msg_length, msg);
+    break;
+  case ULTRAPAD:
+    handle_ud_r0_message(msg_length, msg);
+    break;
+  default:
+    break;
   }
 }

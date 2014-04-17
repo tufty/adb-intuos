@@ -26,6 +26,7 @@
 #include <ctype.h>
 #include <util/delay.h>
 #include <util/atomic.h>
+#include <string.h>
 #include "avr_util.h"
 #include "adb_codec.h"
 #include "adb_side.h"
@@ -48,9 +49,30 @@ void adb_callback(uint8_t error_code) {
   }
 }
 
+void do_adb_command(uint8_t command, uint8_t parameter, uint8_t length, uint8_t * data) {
+  adb_command_just_finished = 0;
+  the_packet.address = 4;
+  the_packet.command = command;
+  the_packet.parameter = parameter;
+  the_packet.datalen = length;
+
+  if (length) {
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+      memcpy((void*)the_packet.data, data, length);
+    }
+  }
+
+  initiateAdbTransfer(&the_packet, &adb_callback);
+  
+  // Spin!
+  while (!adb_command_just_finished);
+}
+
 // ADB / USB initialisation and polling loop
 int main(void)
 {
+  uint8_t adb_data[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+
   // set for 16 MHz clock, and turn on the LED
   CPU_PRESCALE(0);
   LED_CONFIG;
@@ -69,21 +91,38 @@ int main(void)
   }
 
   // First action : talk R3
-  adb_command_just_finished = 0;
-  the_packet.address = 4;
-  the_packet.command = ADB_COMMAND_TALK;
-  the_packet.parameter = 1;
-  the_packet.datalen = 0;
+  do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_3, 0, adb_data);
 
-  initiateAdbTransfer(&the_packet, &adb_callback);
-  //_delay_ms(1000);
+  // Determine tablet family based on handler ID
+  switch (the_packet.data[1]) {
+  case 0x3a:
+    // Ultrapad.  Switch to handler 68 (stop behaving like a bloody mouse)
+    tablet_family = ULTRAPAD;
+    adb_data[0] = the_packet.data[0] | 1; adb_data[1] = 0x68;
+    do_adb_command(ADB_COMMAND_LISTEN, ADB_REGISTER_3, 2, adb_data);
+    adb_data[0] &= 0xf8;
+    do_adb_command(ADB_COMMAND_LISTEN, ADB_REGISTER_1, 2, adb_data);    
+    break;
+  case 0x6a:
+    tablet_family = INTUOS;
+    adb_data[0] = 0x53; adb_data[1] = 0x8c;
+    do_adb_command(ADB_COMMAND_LISTEN, ADB_REGISTER_2, 2, adb_data);
+    adb_data[1] = 0x30;
+    do_adb_command(ADB_COMMAND_LISTEN, ADB_REGISTER_2, 2, adb_data);
+    break;
+  default:
+    break;
+  }
+ 
+  // Now get the tablet details
+  do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_1, 0, adb_data);
 
-  while(!adb_command_just_finished) {_delay_ms(8);};
+  // And populate the USB configurator
   handle_r1_message(the_packet.datalen, the_packet.data);
 
   // At this point, we should be able to bring up USB, and get the correct configuration
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-  usb_init();
+    usb_init();
   }
 
   // Wait for USB configuration to be done
@@ -96,60 +135,19 @@ int main(void)
   queue_message(TOOL_OUT, 0);
   queue_message(TOOL_OUT, 1);
 
-  // Carry on with initialising the tablet.
-  // Not sure if these steps are necessary
-  // Listen R2 0x538c (sniffed from mac traffic by Bernard)
-  adb_command_just_finished = 0;
-  the_packet.command = ADB_COMMAND_LISTEN;
-  the_packet.parameter = 2;
-  the_packet.datalen = 2;
-  the_packet.data[0] = 0x53;
-  the_packet.data[1] = 0x8c;
-
-  initiateAdbTransfer(&the_packet, &adb_callback);
-  while(!adb_command_just_finished) {_delay_ms(8);}
-
-  // Listen R2 0x308c (sniffed from mac traffic by Bernard)
-  adb_command_just_finished = 0;
-  the_packet.command = ADB_COMMAND_LISTEN;
-  the_packet.parameter = 2;
-  the_packet.datalen = 2;
-  the_packet.data[0] = 0x30;
-  the_packet.data[1] = 0x8c;
-
-  initiateAdbTransfer(&the_packet, &adb_callback);
-  while(!adb_command_just_finished) {_delay_ms(8);}
-
-  // Set up for polling
-  adb_command_just_finished = 0;
-  the_packet.address = 4;
-  the_packet.command = ADB_COMMAND_TALK;
-  the_packet.parameter = 0;
-  the_packet.datalen = 0;
-  initiateAdbTransfer(&the_packet, &adb_callback);
-
   // The tablet is now up, we can start polling R0 for data
-  uint8_t copied_adb[8];
   while (1) {
-    if(adb_command_just_finished) {
-      adb_command_just_finished = 0;
-      if (the_packet.datalen > 0) {
-	copied_adb[0] = the_packet.data[0];
-	copied_adb[1] = the_packet.data[1];
-	copied_adb[2] = the_packet.data[2];
-	copied_adb[3] = the_packet.data[3];
-	copied_adb[4] = the_packet.data[4];
-	copied_adb[5] = the_packet.data[5];
-	copied_adb[6] = the_packet.data[6];
-	copied_adb[7] = the_packet.data[7];
-	//	error_condition (the_packet.datalen);
-	handle_r0_message(the_packet.datalen, copied_adb);
-      }
-      the_packet.address = 4;
-      the_packet.command = ADB_COMMAND_TALK;
-      the_packet.parameter = 0;
-      the_packet.datalen = 0;
-      initiateAdbTransfer(&the_packet, &adb_callback);
+    do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_0, 0, adb_data);
+    if (the_packet.datalen > 0) {
+      adb_data[0] = the_packet.data[0];
+      adb_data[1] = the_packet.data[1];
+      adb_data[2] = the_packet.data[2];
+      adb_data[3] = the_packet.data[3];
+      adb_data[4] = the_packet.data[4];
+      adb_data[5] = the_packet.data[5];
+      adb_data[6] = the_packet.data[6];
+      adb_data[7] = the_packet.data[7];
+      handle_r0_message(the_packet.datalen, adb_data);
     }
   }
 }

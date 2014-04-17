@@ -188,7 +188,7 @@ const usb_string_t empty_string = { 0x04, 0x03, L"?" };
 //
 void identify_product(uint16_t product_id) {
   for (uint8_t i = 0; i < n_product_ids; i++) {
-    product_id_t * pid = &product_ids[i];
+    const product_id_t * pid = &product_ids[i];
     if (pid->product_id == product_id) {
       // Set up target device descriptor
       device_descriptor[10] = (uint8_t)(pid->product_id >> 8);
@@ -221,7 +221,7 @@ void queue_message(message_type_t type, uint8_t index) {
     }
   }
   LED_TOGGLE;
-  usb_send_packet(&usb_report, 10, WACOM_INTUOS2_PEN_ENDPOINT, 25);
+  usb_send_packet(usb_report.bytes, 10, WACOM_INTUOS2_PEN_ENDPOINT, 25);
   LED_TOGGLE;
 }
 
@@ -311,7 +311,6 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
     // Tell driver what packet we are.
     packet->bit7 = 1;
     packet->bit6 = 1;
-    packet->proximity = 1;
     packet->bit3 = 1;
 
     if (transducers[index].output_state == 0) {
@@ -341,11 +340,17 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
     packet->bit1 = transducers[index].output_state;
 
     break;
+  case CURSOR:
+    // Identify the packet
+    packet->bit7 = 1;
+    packet->bit4 = 1;
+    // Might need to adjust the ADB side to make these correspond correctly.
+    packet->payload[2] = transducers[index].buttons;
   default:
     while(1) {
       signal_pause();
       signal_word_bcd(transducers[index].type & 0xffff, 0);
     }
     break;
-      }
+  }
 }    

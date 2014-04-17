@@ -47,4 +47,9 @@ void initiateAdbTransfer(volatile AdbPacket* adbPacket, void (*done_callback)(ui
 #define ADB_COMMAND_LISTEN 	2
 #define ADB_COMMAND_TALK 	3
 
+#define ADB_REGISTER_0          0
+#define ADB_REGISTER_1          1
+#define ADB_REGISTER_2          2
+#define ADB_REGISTER_3          3
+
 #endif /* __ADB_CODEC_H__ */
