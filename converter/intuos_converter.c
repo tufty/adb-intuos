@@ -103,7 +103,18 @@ int main(void)
     adb_data[0] &= 0xf8;
     do_adb_command(ADB_COMMAND_LISTEN, ADB_REGISTER_1, 2, adb_data);    
     break;
+  case 0x40:
+    // Calcomp handler.  Need to tell the tablet stop behaving like a mouse
+    // This hapens with either a talk register 1 or a talk register 2, dependent 
+    // on firmware date.  No, we don't know the tablet's firmware date.
+    tablet_family = CALCOMP;
+    do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_1, 0, adb_data);
+    if (the_packet.datalen == 0) {
+      do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_2, 0, adb_data);
+    }
+    break;
   case 0x6a:
+    // Intuos
     tablet_family = INTUOS;
     adb_data[0] = 0x53; adb_data[1] = 0x8c;
     do_adb_command(ADB_COMMAND_LISTEN, ADB_REGISTER_2, 2, adb_data);

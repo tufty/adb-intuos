@@ -23,7 +23,7 @@
 
 #include "transducer.h"
 
-typedef enum { INTUOS, ULTRAPAD } tablet_type_t;
+typedef enum { INTUOS, ULTRAPAD, CALCOMP } tablet_type_t;
 
 extern transducer_t transducers[2];
 extern tablet_type_t tablet_family;
