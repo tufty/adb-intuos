@@ -32,7 +32,7 @@ uint16_t max_x;
 uint16_t max_y;
 
 // Parser for "talk register 1" messages
-void handle_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
+void handle_wacom_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
   if (msg_length == 0)
     error_condition(10);
   if (msg_length < 8) {
@@ -69,6 +69,14 @@ void handle_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
   }
 
   identify_product(id_product);
+}
+
+void handle_r1_message(uint8_t msg_length, volatile uint8_t * msg) { 
+  if (tablet_family != CALCOMP) {
+    handle_wacom_r1_message(msg_length, msg);
+  } else {
+    // TODO Identify calcomp tablets
+  }
 }
 
 // Averaging of locations
@@ -634,6 +642,9 @@ void handle_ud_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
   }
 }
 
+void handle_calcomp_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
+}
+
 // Overall r0 message handler
 void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
   switch (tablet_family) {
@@ -643,6 +654,8 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
   case ULTRAPAD:
     handle_ud_r0_message(msg_length, msg);
     break;
+  case CALCOMP:
+    handle_calcomp_r0_message(msg_length, msg);
   default:
     break;
   }
