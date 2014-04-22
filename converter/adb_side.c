@@ -71,11 +71,36 @@ void handle_wacom_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
   identify_product(id_product);
 }
 
+void handle_calcomp_r1_message(uint8_t msg_length, volatile uint8_t * msg) {
+  switch (msg[1]) {
+  case 0:
+    // Calcomp 4x5
+    id_product = 0x4100;    // Intuos 2 4x5
+    break;
+  case 1:
+    // Calcomp 6x9
+    id_product = 0x4200;    // Intuos 2 6x8
+    break;
+  case 2:
+    // Calcomp 12x12
+    id_product = 0x4400;    // Intuos 2 12x12
+    break;
+  case 3:
+    // Calcomp 12x18
+    id_product = 0x4800;    // Intuos 2 12x18
+    break;
+  }
+ 
+  uint16_t max_x = (msg[3] >> 1) * 1000;
+  uint16_t max_y = (msg[4] >> 1) * 1000;
+  
+}
+
 void handle_r1_message(uint8_t msg_length, volatile uint8_t * msg) { 
   if (tablet_family != CALCOMP) {
     handle_wacom_r1_message(msg_length, msg);
   } else {
-    // TODO Identify calcomp tablets
+    handle_calcomp_r1_message(msg_length, msg);
   }
 }
 
