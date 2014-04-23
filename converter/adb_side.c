@@ -53,18 +53,16 @@ void handle_wacom_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
     id_product = 0x4200;    // Intuos 2 6x8
     break;
   case 0x594c:
-    id_product = 0x4300;    // Intuos 2 9x12
     break;
   case 0x7710:
     if (max_y == max_x) {
       id_product = 0x4400;  // Intuos 2 12x12
     } else { 
-      id_product = 0x4800;  // Intuos 2 12x18
+      id_product = 0x4300;    // Intuos 2 9x12
     }
     break;
   default:
-    // Error 1 - Failed to recognise tablet
-    error_condition(9);
+    id_product = 0x4800;  // Intuos 2 12x18
     break;
   }
 
@@ -91,8 +89,8 @@ void handle_calcomp_r1_message(uint8_t msg_length, volatile uint8_t * msg) {
     break;
   }
  
-  uint16_t max_x = (msg[3] >> 1) * 1000;
-  uint16_t max_y = (msg[4] >> 1) * 1000;
+  max_x = (msg[3] >> 1) * 1000;
+  max_y = (msg[4] >> 1) * 1000;
   
 }
 
