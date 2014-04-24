@@ -41,7 +41,7 @@ tablet_t target_tablet;
 // Intuos 2 target tablet definitions
 const tablet_t intuos2_a6 = {
   INTUOS2, { 0x4100, L"XD-0405-U" },
-  2450, 0x0000, 0x0000, 11,
+  2450, 0x0000, 0x0000, 900, 11,
   {
     BTN_NEW, BTN_OPEN, BTN_CLOSE, BTN_SAVE, BTN_PRINT, BTN_EXIT,
     BTN_CUT, BTN_COPY, BTN_PASTE, BTN_PEN, BTN_MOUSE,
@@ -53,7 +53,7 @@ const tablet_t intuos2_a6 = {
 
 const tablet_t intuos2_a5 = {
   INTUOS2, { 0x4200, L"XD-0608-U" },
-  2450, 0x0000, 0x0000, 18,
+  2450, 0x0000, 0x0000, 900, 18,
   {
     BTN_NEW, BTN_OPEN, BTN_CLOSE, BTN_SAVE, BTN_PRINT, BTN_EXIT,
     BTN_CUT, BTN_COPY, BTN_PASTE, BTN_UNDO, BTN_DEL,
@@ -66,7 +66,7 @@ const tablet_t intuos2_a5 = {
 };
 const tablet_t intuos2_a4 = {
   INTUOS2, { 0x4300, L"XD-0912-U" },
-  2450, 0x0000, 0x0000, 21,
+  2450, 0x0000, 0x0000, 1100, 21,
   {
     BTN_NEW, BTN_OPEN, BTN_CLOSE, BTN_SAVE, BTN_PRINT, BTN_EXIT,
     BTN_CUT, BTN_COPY, BTN_PASTE, BTN_UNDO, BTN_DEL,
@@ -79,7 +79,7 @@ const tablet_t intuos2_a4 = {
 };
 const tablet_t intuos2_a4plus = {
   INTUOS2, { 0x4400, L"XD-1212-U" },
-  2450, 0x0000, 0x0000, 21,
+  2450, 0x0000, 0x0000, 1100, 21,
   {
     BTN_NEW, BTN_OPEN, BTN_CLOSE, BTN_SAVE, BTN_PRINT, BTN_EXIT,
     BTN_CUT, BTN_COPY, BTN_PASTE, BTN_UNDO, BTN_DEL,
@@ -92,7 +92,7 @@ const tablet_t intuos2_a4plus = {
 };
 const tablet_t intuos2_a3 = {
   INTUOS2, { 0x4800, L"XD-1218-U" },
-  2450, 0x0000, 0x0000, 32,
+  2450, 0x0000, 0x0000, 1100, 32,
   {
     BTN_NEW, BTN_OPEN, BTN_CLOSE, BTN_SAVE, BTN_PRINT, BTN_EXIT,
     BTN_CUT, BTN_COPY, BTN_PASTE, BTN_UNDO, BTN_DEL,

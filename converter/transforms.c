@@ -22,17 +22,46 @@
 // Specific to source and target families 
 
 #include "transforms.h"
+#include "shared_state.h"
 
 #ifdef TARGET_INTUOS_2
 
 // Transform a location in source form to target form
 // Effectively a null op for intuos 2 target
 uint16_t x_to_x(uint16_t raw) {
-  return raw;
+  uint32_t transformed;
+  switch (source_tablet.tablet_family) {
+  case CALCOMP:
+    // Rescale dpi to dpi
+    transformed = (raw * target_tablet.max_y);
+    transformed /= source_tablet.max_y;
+    return transformed;
+  default:
+    return raw;
+  }
 }
 
 uint16_t y_to_y(uint16_t raw) {
-  return raw;
+  if (target_tablet.tablet_family == INTUOS2) {
+    uint32_t transformed;
+    switch (source_tablet.tablet_family) {
+    case ULTRAPAD: 
+      // Rescale y to fit the active area
+      transformed = target_tablet.max_y - target_tablet.menu_height;
+      transformed *= raw;
+      transformed /= source_tablet.max_y;
+      return (uint16_t)transformed + target_tablet.menu_height;
+    case INTUOS1:
+      return raw;
+    default:
+      // Rescale dpi to dpi
+      transformed = (raw * target_tablet.max_y);
+      transformed /= source_tablet.max_y;
+      return transformed;
+    }
+  } else {
+    return raw;
+  }
 }
 
 // Transform a z reading from source form to target form
