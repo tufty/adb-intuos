@@ -32,8 +32,9 @@ uint16_t x_to_x(uint16_t raw) {
   uint32_t transformed;
   switch (source_tablet.tablet_family) {
   case CALCOMP:
-    // Rescale dpi to dpi
-    transformed = (raw * target_tablet.max_y);
+  case ULTRAPAD:
+    // Rescale - Calcomps have lower DPI, as do old ultrapads.
+    transformed = raw * target_tablet.max_y;
     transformed /= source_tablet.max_y;
     return transformed;
   default:
@@ -47,6 +48,7 @@ uint16_t y_to_y(uint16_t raw) {
     switch (source_tablet.tablet_family) {
     case ULTRAPAD: 
       // Rescale y to fit the active area
+      // Also deals with case where old ultrapad (?) dpi is lower.
       transformed = target_tablet.max_y - target_tablet.menu_height;
       transformed *= raw;
       transformed /= source_tablet.max_y;
