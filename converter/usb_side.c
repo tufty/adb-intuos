@@ -349,6 +349,9 @@ void synthesize_button(uint8_t index, uint8_t button, uint8_t tool_switch) {
       break;
     }
   }
+  transducers[index].touching = 1;
   transducers[index].buttons = tool_switch;
+  queue_message(TOOL_UPDATE, index);
+  transducers[index].buttons = 0;
   queue_message(TOOL_UPDATE, index);
 }
