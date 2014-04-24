@@ -27,14 +27,6 @@
 #include <string.h>
 
 typedef struct {
-  const uint16_t product_id;
-  const int16_t product_name[10];
-} product_id_t; 
-
-extern const product_id_t product_ids[];
-extern const uint8_t n_product_ids;
-
-typedef struct {
   uint8_t length;
   uint8_t type;
   int16_t string[];

@@ -18,18 +18,117 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+#include <util/atomic.h>
 #include "adb_side.h"
+#include "adb_codec.h"
 #include "usb_side.h"
+#include "buttons.h"
 #include "led.h"
 #include "shared_state.h"
 #include "debug.h"
 
 #include <string.h>
 
+// Nasty globals
+volatile uint8_t adb_command_just_finished = 0;
+volatile AdbPacket the_packet;
+uint8_t adb_data[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+
 transducer_t transducers[2];
-tablet_type_t tablet_family;
-uint16_t max_x;
-uint16_t max_y;
+tablet_t source_tablet;
+tablet_t target_tablet;
+
+// Intuos 2 target tablet definitions
+const tablet_t intuos2_a6 = {
+  INTUOS2, { 0x4100, L"XD-0405-U" },
+  2450, 0x0000, 0x0000, 11,
+  {
+    BTN_NEW, BTN_OPEN, BTN_CLOSE, BTN_SAVE, BTN_PRINT, BTN_EXIT,
+    BTN_CUT, BTN_COPY, BTN_PASTE, BTN_PEN, BTN_MOUSE,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1
+  }
+};
+
+const tablet_t intuos2_a5 = {
+  INTUOS2, { 0x4200, L"XD-0608-U" },
+  2450, 0x0000, 0x0000, 18,
+  {
+    BTN_NEW, BTN_OPEN, BTN_CLOSE, BTN_SAVE, BTN_PRINT, BTN_EXIT,
+    BTN_CUT, BTN_COPY, BTN_PASTE, BTN_UNDO, BTN_DEL,
+    BTN_F12, BTN_F13, 
+    BTN_PEN, BTN_MOUSE,
+    BTN_SOFT, BTN_MED, BTN_FIRM,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1
+  }
+};
+const tablet_t intuos2_a4 = {
+  INTUOS2, { 0x4300, L"XD-0912-U" },
+  2450, 0x0000, 0x0000, 21,
+  {
+    BTN_NEW, BTN_OPEN, BTN_CLOSE, BTN_SAVE, BTN_PRINT, BTN_EXIT,
+    BTN_CUT, BTN_COPY, BTN_PASTE, BTN_UNDO, BTN_DEL,
+    BTN_F12, BTN_F13, BTN_F14, BTN_F15, BTN_F16, 
+    BTN_PEN, BTN_MOUSE,
+    BTN_SOFT, BTN_MED, BTN_FIRM,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1
+  }
+};
+const tablet_t intuos2_a4plus = {
+  INTUOS2, { 0x4400, L"XD-1212-U" },
+  2450, 0x0000, 0x0000, 21,
+  {
+    BTN_NEW, BTN_OPEN, BTN_CLOSE, BTN_SAVE, BTN_PRINT, BTN_EXIT,
+    BTN_CUT, BTN_COPY, BTN_PASTE, BTN_UNDO, BTN_DEL,
+    BTN_F12, BTN_F13, BTN_F14, BTN_F15, BTN_F16, 
+    BTN_PEN, BTN_MOUSE,
+    BTN_SOFT, BTN_MED, BTN_FIRM,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1
+  }
+};
+const tablet_t intuos2_a3 = {
+  INTUOS2, { 0x4800, L"XD-1218-U" },
+  2450, 0x0000, 0x0000, 32,
+  {
+    BTN_NEW, BTN_OPEN, BTN_CLOSE, BTN_SAVE, BTN_PRINT, BTN_EXIT,
+    BTN_CUT, BTN_COPY, BTN_PASTE, BTN_UNDO, BTN_DEL,
+    BTN_F12, BTN_F13, BTN_F14, BTN_F15, BTN_F16, BTN_F17, BTN_F18, BTN_F19,
+    BTN_F20, BTN_F21, BTN_F22, BTN_F23, FTN_F24, BTN_F25, BTN_F26, BTN_F27,
+    BTN_PEN, BTN_MOUSE,
+    BTN_SOFT, BTN_MED, BTN_FIRM
+  }
+};  
+
+void adb_callback(uint8_t error_code) {
+  adb_command_just_finished = 1;
+  if (error_code != 0) {
+    the_packet.datalen = 0;
+    error_condition(error_code);
+  }
+}
+
+void do_adb_command(uint8_t command, uint8_t parameter, uint8_t length, uint8_t * data) {
+  adb_command_just_finished = 0;
+  the_packet.address = 4;
+  the_packet.command = command;
+  the_packet.parameter = parameter;
+  the_packet.datalen = length;
+
+  if (length) {
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+      memcpy((void*)the_packet.data, data, length);
+    }
+  }
+
+  initiateAdbTransfer(&the_packet, &adb_callback);
+  
+  // Spin!
+  while (!adb_command_just_finished);
+}
 
 // Parser for "talk register 1" messages
 void handle_wacom_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
@@ -39,67 +138,130 @@ void handle_wacom_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
     error_condition(msg_length);
   }
 
-  uint16_t id_product = 0xdead;
-  max_x = ((uint16_t)(msg[2]) << 8) | (uint16_t)msg[3];
-  max_y = ((uint16_t)(msg[4]) << 8) | (uint16_t)msg[5];
+  source_tablet.dpi = 2450;
 
-  // Tablet ids taken from http://www.linux-usb.org/usb.ids
-  // Little-endian
-  switch (max_x) {
+  source_tablet.max_x = ((uint16_t)(msg[2]) << 8) | (uint16_t)msg[3];
+  source_tablet.max_y = ((uint16_t)(msg[4]) << 8) | (uint16_t)msg[5];
+
+  const tablet_t * target;
+  switch (source_tablet.max_x) {
   case 0x319c:
-    id_product = 0x4100;    // Intuos 2 4x5
+    target = &intuos2_a6;
     break;
   case 0x4f60:
-    id_product = 0x4200;    // Intuos 2 6x8
-    break;
-  case 0x594c:
+    target = &intuos2_a5;
     break;
   case 0x7710:
-    if (max_y == max_x) {
-      id_product = 0x4400;  // Intuos 2 12x12
+    if (source_tablet.max_y == source_tablet.max_x) {
+      target = &intuos2_a4plus;
     } else { 
-      id_product = 0x4300;    // Intuos 2 9x12
+      target = &intuos2_a4;
     }
     break;
   default:
-    id_product = 0x4800;  // Intuos 2 12x18
+    target = &intuos2_a3;
     break;
   }
+  memcpy(&target_tablet, target, sizeof(tablet_t));
 
-  identify_product(id_product);
+  // Resolutions are identical between ultrapad and intuos 1
+  if (target_tablet.tablet_family == INTUOS2) {
+    target_tablet.max_x = source_tablet.max_x;
+    target_tablet.max_y = source_tablet.max_y;
+  } else {
+    target_tablet.max_x = source_tablet.max_x << 1;
+    target_tablet.max_y = source_tablet.max_y << 1;
+  }    
+  
+  identify_product();
 }
 
 void handle_calcomp_r1_message(uint8_t msg_length, volatile uint8_t * msg) {
+  source_tablet.dpi = 1000;
   switch (msg[1]) {
   case 0:
+    //    source_tablet.tablet_format = target_tablet.tablet_format = A6;
     // Calcomp 4x5
-    id_product = 0x4100;    // Intuos 2 4x5
+    //id_product = 0x4100;    // Intuos 2 4x5
     break;
   case 1:
+    //    source_tablet.tablet_format = target_tablet.tablet_format = A5;
     // Calcomp 6x9
-    id_product = 0x4200;    // Intuos 2 6x8
+    //id_product = 0x4200;    // Intuos 2 6x8
     break;
   case 2:
+    //    source_tablet.tablet_format = target_tablet.tablet_format = A4PLUS;
     // Calcomp 12x12
-    id_product = 0x4400;    // Intuos 2 12x12
+    //id_product = 0x4400;    // Intuos 2 12x12
     break;
   case 3:
+    //    source_tablet.tablet_format = target_tablet.tablet_format = A3;
     // Calcomp 12x18
-    id_product = 0x4800;    // Intuos 2 12x18
+    //id_product = 0x4800;    // Intuos 2 12x18
     break;
   }
  
-  max_x = (msg[3] >> 1) * 1000;
-  max_y = (msg[4] >> 1) * 1000;
+  source_tablet.max_x = (msg[3] >> 1) * 1000;
+  source_tablet.max_y = (msg[4] >> 1) * 1000;
   
 }
 
 void handle_r1_message(uint8_t msg_length, volatile uint8_t * msg) { 
-  if (tablet_family != CALCOMP) {
+  switch (source_tablet.tablet_family) {
+  case INTUOS1:
+  case ULTRAPAD:
     handle_wacom_r1_message(msg_length, msg);
-  } else {
+    break;
+  case CALCOMP:
     handle_calcomp_r1_message(msg_length, msg);
+    break;
+  default:
+    break;
   }
+}
+
+void wakeup_tablet() {
+  // First action : talk R3
+  do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_3, 0, adb_data);
+
+  // Determine tablet family based on handler ID
+  switch (the_packet.data[1]) {
+  case 0x3a:
+    // Ultrapad.  Switch to handler 68 (stop behaving like a bloody mouse)
+    source_tablet.tablet_family = ULTRAPAD;
+    adb_data[0] = the_packet.data[0] | 1; adb_data[1] = 0x68;
+    do_adb_command(ADB_COMMAND_LISTEN, ADB_REGISTER_3, 2, adb_data);
+    adb_data[0] &= 0xf8;
+    do_adb_command(ADB_COMMAND_LISTEN, ADB_REGISTER_1, 2, adb_data);
+    // Now get the tablet details
+    do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_1, 0, adb_data);
+    break;
+  case 0x40:
+    // Calcomp handler.  Need to tell the tablet stop behaving like a mouse
+    // This hapens with either a talk register 1 or a talk register 2, dependent 
+    // on firmware date.  No, we don't know the tablet's firmware date.
+    source_tablet.tablet_family = CALCOMP;
+    do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_1, 0, adb_data);
+    if (the_packet.datalen == 0) {
+      do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_2, 0, adb_data);
+    }
+    break;
+  case 0x6a:
+    // Intuos
+    source_tablet.tablet_family = INTUOS1;
+    adb_data[0] = 0x53; adb_data[1] = 0x8c;
+    do_adb_command(ADB_COMMAND_LISTEN, ADB_REGISTER_2, 2, adb_data);
+    adb_data[1] = 0x30;
+    do_adb_command(ADB_COMMAND_LISTEN, ADB_REGISTER_2, 2, adb_data);
+    // Now get the tablet details
+    do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_1, 0, adb_data);
+    break;
+  default:
+    break;
+  }
+ 
+  // And populate the USB configurator
+  handle_r1_message(the_packet.datalen, the_packet.data);
 }
 
 // Averaging of locations
@@ -456,12 +618,12 @@ void handle_gd_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
 			      &transducers[transducer].location_x_shift,
 			      &transducers[transducer].location_x,
 			      &transducers[transducer].location_x_old,
-			      max_x);
+			      source_tablet.max_x);
       process_location_delta (((msg[index] & 0x01) << 4) | (msg[index + 1] >> 4),
 			      &transducers[transducer].location_y_shift,
 			      &transducers[transducer].location_y,
 			      &transducers[transducer].location_y_old,
-			      max_y);
+			      source_tablet.max_y);
 
       // Now switch based on transducer type.
       switch (transducers[transducer].type & 0xff7) {
@@ -670,8 +832,8 @@ void handle_calcomp_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
 
 // Overall r0 message handler
 void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
-  switch (tablet_family) {
-  case INTUOS:
+  switch (source_tablet.tablet_family) {
+  case INTUOS1:
     handle_gd_r0_message(msg_length, msg);
     break;
   case ULTRAPAD:
@@ -681,5 +843,23 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
     handle_calcomp_r0_message(msg_length, msg);
   default:
     break;
+  }
+}
+
+void poll_tablet() {
+  // The tablet is now up, we can start polling R0 for data
+  while (1) {
+    do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_0, 0, adb_data);
+    if (the_packet.datalen > 0) {
+      adb_data[0] = the_packet.data[0];
+      adb_data[1] = the_packet.data[1];
+      adb_data[2] = the_packet.data[2];
+      adb_data[3] = the_packet.data[3];
+      adb_data[4] = the_packet.data[4];
+      adb_data[5] = the_packet.data[5];
+      adb_data[6] = the_packet.data[6];
+      adb_data[7] = the_packet.data[7];
+      handle_r0_message(the_packet.datalen, adb_data);
+    }
   }
 }

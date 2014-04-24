@@ -23,7 +23,7 @@
 
 #include <stdint.h>
 
-void handle_r1_message(uint8_t msg_length, volatile uint8_t * msg);
-void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg);
+void wakeup_tablet();
+void poll_tablet();
 
 #endif

@@ -22,11 +22,26 @@
 // THE SOFTWARE.
 
 #include "transducer.h"
+#include "buttons.h"
 
-typedef enum { INTUOS, ULTRAPAD, CALCOMP } tablet_type_t;
+typedef struct {
+  const uint16_t product_id;
+  const int16_t product_name[10];
+} product_id_t; 
+
+typedef struct {
+  enum { INTUOS1, INTUOS2, INTUOS3, ULTRAPAD, CALCOMP } tablet_family;
+  product_id_t product_id;
+  uint16_t dpi;
+  uint16_t max_x; 
+  uint16_t max_y;
+  uint8_t n_buttons;
+  button_t buttons[32];
+} tablet_t;
 
 extern transducer_t transducers[2];
-extern tablet_type_t tablet_family;
 
+extern tablet_t source_tablet;
+extern tablet_t target_tablet; 
 
 #endif

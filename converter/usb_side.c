@@ -29,17 +29,6 @@
 #include "led.h"
 #include "debug.h"
 
-const product_id_t product_ids[] = {
-  {0x4100, L"XD-0405-U"},
-  {0x4200, L"XD-0608-U"},
-  {0x4300, L"XD-0912-U"},
-  {0x4400, L"XD-1212-U"},
-  {0x4800, L"XD-1218-U"}
-};
-
-// Number of products we fake
-const uint8_t n_product_ids = 5;
-
 // Tablet device descriptor
 // Pre-set up with the stuff we already know
 uint8_t device_descriptor[18] = {
@@ -186,17 +175,11 @@ const usb_string_t empty_string = { 0x04, 0x03, L"?" };
 
 // Do product identification
 //
-void identify_product(uint16_t product_id) {
-  for (uint8_t i = 0; i < n_product_ids; i++) {
-    const product_id_t * pid = &product_ids[i];
-    if (pid->product_id == product_id) {
-      // Set up target device descriptor
-      device_descriptor[10] = (uint8_t)(pid->product_id >> 8);
-      device_descriptor[11] = (uint8_t)(pid->product_id & 0xff);
-      memcpy((void *)(string2.string), (const void *)(pid->product_name), string2.length - 2);
-      return;
-    }
-  }
+void identify_product() {
+  // Set up target device descriptor
+  device_descriptor[10] = (uint8_t)(target_tablet.product_id.product_id >> 8);
+  device_descriptor[11] = (uint8_t)(target_tablet.product_id.product_id & 0xff);
+  memcpy((void *)(string2.string), (const void *)(&target_tablet.product_id.product_name), string2.length - 2);
 }
 
 // Private stuff

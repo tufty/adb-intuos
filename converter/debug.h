@@ -23,6 +23,9 @@
 
 #include <stdint.h>
 
+#define DO_PRAGMA(x) _Pragma (#x)
+#define TODO(x) DO_PRAGMA(message ("TODO - " #x))
+
 uint8_t signal_nybble(uint8_t value);
 void signal_internybble ();
 void signal_pause ();

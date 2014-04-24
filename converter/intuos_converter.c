@@ -36,43 +36,10 @@
 
 #define CPU_PRESCALE(n) (CLKPR = 0x80, CLKPR = (n))
 
-// Nasty globals
-volatile uint8_t adb_command_just_finished = 0;
-volatile AdbPacket the_packet;
-
-
-void adb_callback(uint8_t error_code) {
-  adb_command_just_finished = 1;
-  if (error_code != 0) {
-    the_packet.datalen = 0;
-    error_condition(error_code);
-  }
-}
-
-void do_adb_command(uint8_t command, uint8_t parameter, uint8_t length, uint8_t * data) {
-  adb_command_just_finished = 0;
-  the_packet.address = 4;
-  the_packet.command = command;
-  the_packet.parameter = parameter;
-  the_packet.datalen = length;
-
-  if (length) {
-    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-      memcpy((void*)the_packet.data, data, length);
-    }
-  }
-
-  initiateAdbTransfer(&the_packet, &adb_callback);
-  
-  // Spin!
-  while (!adb_command_just_finished);
-}
 
 // ADB / USB initialisation and polling loop
 int main(void)
 {
-  uint8_t adb_data[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-
   // set for 16 MHz clock, and turn on the LED
   CPU_PRESCALE(0);
   LED_CONFIG;
@@ -90,46 +57,8 @@ int main(void)
     adb_init();
   }
 
-  // First action : talk R3
-  do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_3, 0, adb_data);
+  wakeup_tablet();
 
-  // Determine tablet family based on handler ID
-  switch (the_packet.data[1]) {
-  case 0x3a:
-    // Ultrapad.  Switch to handler 68 (stop behaving like a bloody mouse)
-    tablet_family = ULTRAPAD;
-    adb_data[0] = the_packet.data[0] | 1; adb_data[1] = 0x68;
-    do_adb_command(ADB_COMMAND_LISTEN, ADB_REGISTER_3, 2, adb_data);
-    adb_data[0] &= 0xf8;
-    do_adb_command(ADB_COMMAND_LISTEN, ADB_REGISTER_1, 2, adb_data);    
-    break;
-  case 0x40:
-    // Calcomp handler.  Need to tell the tablet stop behaving like a mouse
-    // This hapens with either a talk register 1 or a talk register 2, dependent 
-    // on firmware date.  No, we don't know the tablet's firmware date.
-    tablet_family = CALCOMP;
-    do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_1, 0, adb_data);
-    if (the_packet.datalen == 0) {
-      do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_2, 0, adb_data);
-    }
-    break;
-  case 0x6a:
-    // Intuos
-    tablet_family = INTUOS;
-    adb_data[0] = 0x53; adb_data[1] = 0x8c;
-    do_adb_command(ADB_COMMAND_LISTEN, ADB_REGISTER_2, 2, adb_data);
-    adb_data[1] = 0x30;
-    do_adb_command(ADB_COMMAND_LISTEN, ADB_REGISTER_2, 2, adb_data);
-    break;
-  default:
-    break;
-  }
- 
-  // Now get the tablet details
-  do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_1, 0, adb_data);
-
-  // And populate the USB configurator
-  handle_r1_message(the_packet.datalen, the_packet.data);
 
   // At this point, we should be able to bring up USB, and get the correct configuration
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -146,21 +75,7 @@ int main(void)
   queue_message(TOOL_OUT, 0);
   queue_message(TOOL_OUT, 1);
 
-  // The tablet is now up, we can start polling R0 for data
-  while (1) {
-    do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_0, 0, adb_data);
-    if (the_packet.datalen > 0) {
-      adb_data[0] = the_packet.data[0];
-      adb_data[1] = the_packet.data[1];
-      adb_data[2] = the_packet.data[2];
-      adb_data[3] = the_packet.data[3];
-      adb_data[4] = the_packet.data[4];
-      adb_data[5] = the_packet.data[5];
-      adb_data[6] = the_packet.data[6];
-      adb_data[7] = the_packet.data[7];
-      handle_r0_message(the_packet.datalen, adb_data);
-    }
-  }
+  poll_tablet();
 }
 
 

@@ -33,10 +33,10 @@ typedef struct {
       unsigned int command:2;
       unsigned int address:4;
     };
-    byte headerRawByte;
+    uint8_t headerRawByte;
   };
-  byte data[8];
-  byte datalen;
+  uint8_t data[8];
+  uint8_t datalen;
 } AdbPacket;
 
 void adb_init(void);
