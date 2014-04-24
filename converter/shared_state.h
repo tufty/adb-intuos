@@ -36,6 +36,7 @@ typedef struct {
   uint16_t max_x; 
   uint16_t max_y;
   uint16_t menu_height;
+  uint16_t button_width;
   uint8_t n_buttons;
   button_t buttons[32];
 } tablet_t;

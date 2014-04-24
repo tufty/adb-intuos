@@ -39,5 +39,6 @@
 void error_condition(uint8_t error);
 void identify_product();
 void queue_message (message_type_t type, uint8_t transducer);
+void synthesize_button(uint8_t index, uint8_t button, uint8_t tool_switch);
 
 #endif

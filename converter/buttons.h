@@ -42,13 +42,14 @@
 // GD-1212 has : file, edit, f12->f16, pen/mouse, soft/med/firm
 // GD-1218 has : file, edit, f12->f27, pen/mouse, soft/med/firm
 // 
-// On the 0608 model, the button bar is 9mm high.  On the 1212 model, 11mm.
+// On the 0608 model, the button bar is ~9mm high.  On the 1212 model, ~11mm.
 // Interbutton and interblock spacing appears to be the same between models, with
 // button width being the same as bar height. 
 // On the GD-0608, buttons are ~8.5mm by 5mm, vertically centred, with ~2mm
 // spacing.
 // Blocks start and end at ~3mm from tablet edge
 // Interblock spacing is ~4mm
+// My fucking caliper is crap.
 //
 // We don't know exactly the measures, but we have 4 variables and 4 equations...
 // Unsurprisingly, this doesn't solve, as the sizes vary by model.  Bloody Wacom.
@@ -57,14 +58,30 @@
 // 2a + 4b + 16c + 21x = 294
 // 2a + 4b + 27c + 32x = 441
 //
+// Bernard's templates imply that UD-0608 has 880 points less resolution in the y 
+// axis than the GD-0608, which implies 8.8 mm for the button bar.
+// UD-0912 is the same if we believe Bernard. I'm not sure I do.
+// UD-1212 / UD1218 has 1200 points less, 12mm.  Feasible.
 
-typedef enum {
-  BTN_NEW, BTN_OPEN, BTN_CLOSE, BTN_SAVE, BTN_PRINT, BTN_EXIT,
-  BTN_CUT, BTN_COPY, BTN_PASTE, BTN_UNDO, BTN_DEL,
-  BTN_F12, BTN_F13, BTN_F14, BTN_F15, BTN_F16, BTN_F17, BTN_F18, BTN_F19,
-  BTN_F20, BTN_F21, BTN_F22, BTN_F23, FTN_F24, BTN_F25, BTN_F26, BTN_F27,
-  BTN_PEN, BTN_MOUSE,
-  BTN_SOFT, BTN_MED, BTN_FIRM
+// the hell with it.  Remeasure and average
+// GD-0608
+// Button width : 8.8mm
+// interbutton : 1.7mm
+// side : 3.2mm
+// interblock : 4.1mm
+
+typedef struct {
+  enum {
+    BTN_NONE, BTN_NEW, BTN_OPEN, BTN_CLOSE, BTN_SAVE, BTN_PRINT, BTN_EXIT,
+    BTN_CUT, BTN_COPY, BTN_PASTE, BTN_UNDO, BTN_DEL,
+    BTN_F12, BTN_F13, BTN_F14, BTN_F15, BTN_F16, BTN_F17, BTN_F18, BTN_F19,
+    BTN_F20, BTN_F21, BTN_F22, BTN_F23, BTN_F24, BTN_F25, BTN_F26, BTN_F27,
+    BTN_PEN, BTN_MOUSE,
+    BTN_SOFT, BTN_MED, BTN_FIRM
+  } button;
+  uint16_t x;
 } button_t;
+
+#define NONE {BTN_NONE, 0}
 
 #endif

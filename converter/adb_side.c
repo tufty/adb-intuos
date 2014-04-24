@@ -41,65 +41,65 @@ tablet_t target_tablet;
 // Intuos 2 target tablet definitions
 const tablet_t intuos2_a6 = {
   INTUOS2, { 0x4100, L"XD-0405-U" },
-  2450, 0x0000, 0x0000, 900, 11,
+  2450, 0x0000, 0x0000, 880, 880, 11,
   {
-    BTN_NEW, BTN_OPEN, BTN_CLOSE, BTN_SAVE, BTN_PRINT, BTN_EXIT,
-    BTN_CUT, BTN_COPY, BTN_PASTE, BTN_PEN, BTN_MOUSE,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1
+    {BTN_NEW,0}, {BTN_OPEN,0}, {BTN_CLOSE, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0}, {BTN_EXIT, 0},
+    {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_PEN, 0}, {BTN_MOUSE, 0},
+    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+    NONE, NONE, NONE, NONE, NONE
   }
 };
 
 const tablet_t intuos2_a5 = {
   INTUOS2, { 0x4200, L"XD-0608-U" },
-  2450, 0x0000, 0x0000, 900, 18,
+  2450, 0x0000, 0x0000, 880, 880, 18,
   {
-    BTN_NEW, BTN_OPEN, BTN_CLOSE, BTN_SAVE, BTN_PRINT, BTN_EXIT,
-    BTN_CUT, BTN_COPY, BTN_PASTE, BTN_UNDO, BTN_DEL,
-    BTN_F12, BTN_F13, 
-    BTN_PEN, BTN_MOUSE,
-    BTN_SOFT, BTN_MED, BTN_FIRM,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1
+    {BTN_NEW, 320}, {BTN_OPEN, 1380}, {BTN_CLOSE, 2420}, {BTN_SAVE, 3490}, {BTN_PRINT, 4550}, {BTN_EXIT, 5520},
+    {BTN_CUT, 6990}, {BTN_COPY, 8070}, {BTN_PASTE, 9150}, {BTN_UNDO, 10130}, {BTN_DEL, 11210},
+    {BTN_F12, 12650}, {BTN_F13, 13700}, 
+    {BTN_PEN, 13700 + 1380}, {BTN_MOUSE, 13700 + 2480},
+    {BTN_SOFT, 13700 + 3820}, {BTN_MED, 13700 + 4890}, {BTN_FIRM, 13700 + 5940},
+    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+    NONE, NONE, NONE, NONE, NONE, NONE
   }
 };
 const tablet_t intuos2_a4 = {
   INTUOS2, { 0x4300, L"XD-0912-U" },
-  2450, 0x0000, 0x0000, 1100, 21,
+  2450, 0x0000, 0x0000, 1100, 1100, 21,
   {
-    BTN_NEW, BTN_OPEN, BTN_CLOSE, BTN_SAVE, BTN_PRINT, BTN_EXIT,
-    BTN_CUT, BTN_COPY, BTN_PASTE, BTN_UNDO, BTN_DEL,
-    BTN_F12, BTN_F13, BTN_F14, BTN_F15, BTN_F16, 
-    BTN_PEN, BTN_MOUSE,
-    BTN_SOFT, BTN_MED, BTN_FIRM,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1
+    {BTN_NEW, 0}, {BTN_OPEN, 0}, {BTN_CLOSE, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0}, {BTN_EXIT, 0},
+    {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_UNDO, 0}, {BTN_DEL, 0},
+    {BTN_F12, 0}, {BTN_F13, 0}, {BTN_F14, 0}, {BTN_F15, 0}, {BTN_F16, 0}, 
+    {BTN_PEN, 0}, {BTN_MOUSE, 0},
+    {BTN_SOFT, 0}, {BTN_MED, 0}, {BTN_FIRM, 0},
+    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+    NONE, NONE, NONE
   }
 };
 const tablet_t intuos2_a4plus = {
   INTUOS2, { 0x4400, L"XD-1212-U" },
-  2450, 0x0000, 0x0000, 1100, 21,
+  2450, 0x0000, 0x0000, 1100, 1100, 21,
   {
-    BTN_NEW, BTN_OPEN, BTN_CLOSE, BTN_SAVE, BTN_PRINT, BTN_EXIT,
-    BTN_CUT, BTN_COPY, BTN_PASTE, BTN_UNDO, BTN_DEL,
-    BTN_F12, BTN_F13, BTN_F14, BTN_F15, BTN_F16, 
-    BTN_PEN, BTN_MOUSE,
-    BTN_SOFT, BTN_MED, BTN_FIRM,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1
+    {BTN_NEW, 0}, {BTN_OPEN, 0}, {BTN_CLOSE, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0}, {BTN_EXIT, 0},
+    {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_UNDO, 0}, {BTN_DEL, 0},
+    {BTN_F12, 0}, {BTN_F13, 0}, {BTN_F14, 0}, {BTN_F15, 0}, {BTN_F16, 0}, 
+    {BTN_PEN, 0}, {BTN_MOUSE, 0},
+    {BTN_SOFT, 0}, {BTN_MED, 0}, {BTN_FIRM, 0},
+    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+    NONE, NONE, NONE
   }
 };
 const tablet_t intuos2_a3 = {
   INTUOS2, { 0x4800, L"XD-1218-U" },
-  2450, 0x0000, 0x0000, 1100, 32,
+  2450, 0x0000, 0x0000, 1100, 1100, 32,
   {
-    BTN_NEW, BTN_OPEN, BTN_CLOSE, BTN_SAVE, BTN_PRINT, BTN_EXIT,
-    BTN_CUT, BTN_COPY, BTN_PASTE, BTN_UNDO, BTN_DEL,
-    BTN_F12, BTN_F13, BTN_F14, BTN_F15, BTN_F16, BTN_F17, BTN_F18, BTN_F19,
-    BTN_F20, BTN_F21, BTN_F22, BTN_F23, FTN_F24, BTN_F25, BTN_F26, BTN_F27,
-    BTN_PEN, BTN_MOUSE,
-    BTN_SOFT, BTN_MED, BTN_FIRM
+    {BTN_NEW, 0}, {BTN_OPEN, 0}, {BTN_CLOSE, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0}, {BTN_EXIT, 0},
+    {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_UNDO, 0}, {BTN_DEL, 0},
+    {BTN_F12, 0}, {BTN_F13, 0}, {BTN_F14, 0}, {BTN_F15, 0}, {BTN_F16, 0}, {BTN_F17, 0}, {BTN_F18, 0}, {BTN_F19, 0},
+    {BTN_F20, 0}, {BTN_F21, 0}, {BTN_F22, 0}, {BTN_F23, 0}, {BTN_F24, 0}, {BTN_F25, 0}, {BTN_F26, 0}, {BTN_F27, 0},
+    {BTN_PEN, 0}, {BTN_MOUSE, 0},
+    {BTN_SOFT, 0}, {BTN_MED, 0}, {BTN_FIRM, 0}
   }
 };  
 
@@ -816,7 +816,20 @@ void handle_ud_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
       break;
     default:
       if (msg[0] & 0x10) {
-	// Macro button click.  Need to decide how to handle this.
+	// Macro button click.
+	// Synthesize a tool in proximity message
+	if (msg[0] & 0x20) {
+	  transducers[index].type = STYLUS_STANDARD;
+	  transducers[index].id = 0x016002cd;  // Bernard's Intuos 2 pen
+	} else {
+	  transducers[index].type = CURSOR;
+	  transducers[index].id = 0xfe9ffd32;  // Invert Bernards's Intuos 2 Pen
+	}
+	queue_message(TOOL_IN, index);
+	// Then click and back out
+	// TODO : check if the tool buttons are correct, or if they vary by tool.
+	synthesize_button(index, source_tablet.buttons[msg[2]].button, msg[0] & 0x0f);
+	queue_message(TOOL_OUT, index);
       } else {
 	// Out of proximity.
 	queue_message(TOOL_OUT, index);

@@ -25,7 +25,7 @@
 
 #define TARGET_INTUOS_2
 
-uint16_t y_to_x(uint16_t raw);
+uint16_t x_to_x(uint16_t raw);
 uint16_t y_to_y(uint16_t raw);
 uint16_t z_to_z(uint16_t raw);
 uint8_t tilt_to_tilt(uint8_t raw);
