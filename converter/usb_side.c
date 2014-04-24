@@ -261,11 +261,11 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
   }
 
   // Transformed data
-  transformed = location_to_location(transducers[index].location_x);
+  transformed = x_to_x(transducers[index].location_x);
   packet->x_hi = transformed >> 8;
   packet->x_lo = transformed & 0xff;
 
-  transformed = location_to_location(transducers[index].location_y);
+  transformed = y_to_y(transducers[index].location_y);
   packet->y_hi = transformed >> 8;
   packet->y_lo = transformed & 0xff;
 
