@@ -328,10 +328,8 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
     packet->bit7 = 1;
     packet->bit6 = 1;
     packet->bit4 = 1;
-    // Might need to adjust the ADB side to make these correspond correctly.
-    // Bernard thinks this goes to byte 8.  I'm not sure he's ever tested it.
+    // Buttons have already been modified
     packet->payload[2] = transducers[index].buttons;
-    //    packet->payload[1] |= 0x1f;
     break;
   default:
     while(1) {
