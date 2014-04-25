@@ -18,56 +18,349 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+#include <util/atomic.h>
 #include "adb_side.h"
+#include "adb_codec.h"
 #include "usb_side.h"
+#include "buttons.h"
 #include "led.h"
 #include "shared_state.h"
 #include "debug.h"
 
 #include <string.h>
 
+// Nasty globals
+volatile uint8_t adb_command_just_finished = 0;
+volatile AdbPacket the_packet;
+uint8_t adb_data[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+
 transducer_t transducers[2];
-uint16_t max_x;
-uint16_t max_y;
+source_tablet_t source_tablet;
+tablet_t target_tablet;
+
+const source_tablet_t ultrapad_a6;
+const source_tablet_t ultrapad_a5 = {
+  ULTRAPAD,
+  0x5000, 0x3c00, 880, 18,
+  {
+    {BTN_F1, 0}, {BTN_F2, 0}, {BTN_F3, 0}, {BTN_F4, 0}, {BTN_F5, 0},
+    {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_UNDO, 0}, {BTN_DEL, 0},
+    {BTN_NEW, 0}, {BTN_OPEN, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0},
+    {BTN_PEN, 0}, {BTN_MOUSE, 0}, 
+    {BTN_SOFT, 0}, {BTN_FIRM, 0},
+    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+    NONE, NONE, NONE, NONE, NONE, NONE
+  }
+};
+const source_tablet_t ultrapad_a4;
+const source_tablet_t ultrapad_a4plus;
+const source_tablet_t ultrapad_a3;
+
+const source_tablet_t intuos1_a6 = {  // Intuos 1 A6
+  INTUOS1, 
+  0x319c, 0x2968, 880, 11,
+  {
+    {BTN_NEW,0}, {BTN_OPEN,0}, {BTN_CLOSE, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0}, {BTN_EXIT, 0},
+    {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_PEN, 0}, {BTN_MOUSE, 0},
+    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+    NONE, NONE, NONE, NONE, NONE
+  }
+};
+const source_tablet_t intuos1_a5 = {  // Intuos 1 A5
+  INTUOS1, 
+  0x4f60, 0x3f70, 880, 18,
+  {
+    {BTN_NEW, 320}, {BTN_OPEN, 1380}, {BTN_CLOSE, 2420}, {BTN_SAVE, 3490}, {BTN_PRINT, 4550}, {BTN_EXIT, 5520},
+    {BTN_CUT, 6990}, {BTN_COPY, 8070}, {BTN_PASTE, 9150}, {BTN_UNDO, 10130}, {BTN_DEL, 11210},
+    {BTN_F12, 12650}, {BTN_F13, 13700}, 
+    {BTN_PEN, 13700 + 1380}, {BTN_MOUSE, 13700 + 2480},
+    {BTN_SOFT, 13700 + 3820}, {BTN_MED, 13700 + 4890}, {BTN_FIRM, 13700 + 5940},
+    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+    NONE, NONE, NONE, NONE, NONE, NONE
+  }
+};
+const source_tablet_t intuos1_a4 = {  // Intuos 1 A4
+  INTUOS1, 
+  0x7710, 0x5dfc, 1100, 22,
+  {
+    {BTN_NEW, 300}, {BTN_OPEN, 1650}, {BTN_CLOSE, 3000}, {BTN_SAVE, 4300}, {BTN_PRINT, 5600}, {BTN_EXIT, 6900},
+    {BTN_CUT, 8600}, {BTN_COPY, 10000}, {BTN_PASTE, 11300}, {BTN_UNDO, 12600}, {BTN_DEL, 13900},
+    {BTN_F12, 15600}, {BTN_F13, 16900}, {BTN_F14, 18300}, {BTN_F15, 19600}, {BTN_F16, 20900}, 
+    {BTN_PEN, 22600}, {BTN_MOUSE, 23900}, {BTN_QUICKPOINT, 25300},
+    {BTN_SOFT, 26900}, {BTN_MED, 28200}, {BTN_FIRM, 29500},
+    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+    NONE, NONE
+  }
+};
+const source_tablet_t intuos1_a4plus = {  // Intuos 1 A4 Plus
+  INTUOS1, 
+  0x7710, 0x7bc0, 1100, 22,
+  {
+    {BTN_NEW, 300}, {BTN_OPEN, 1650}, {BTN_CLOSE, 3000}, {BTN_SAVE, 4300}, {BTN_PRINT, 5600}, {BTN_EXIT, 6900},
+    {BTN_CUT, 8600}, {BTN_COPY, 10000}, {BTN_PASTE, 11300}, {BTN_UNDO, 12600}, {BTN_DEL, 13900},
+    {BTN_F12, 15600}, {BTN_F13, 16900}, {BTN_F14, 18300}, {BTN_F15, 19600}, {BTN_F16, 20900}, 
+    {BTN_PEN, 22600}, {BTN_MOUSE, 23900}, {BTN_QUICKPOINT, 25300},
+    {BTN_SOFT, 26900}, {BTN_MED, 28200}, {BTN_FIRM, 29500},
+    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+    NONE, NONE
+  }
+};
+const source_tablet_t intuos1_a3 = { // Intuos 1 A3
+  INTUOS1, 
+  0xb298, 0x7bc0, 1100, 32,
+  {
+    {BTN_NEW, 0}, {BTN_OPEN, 0}, {BTN_CLOSE, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0}, {BTN_EXIT, 0},
+    {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_UNDO, 0}, {BTN_DEL, 0},
+    {BTN_F12, 0}, {BTN_F13, 0}, {BTN_F14, 0}, {BTN_F15, 0}, {BTN_F16, 0}, {BTN_F17, 0}, {BTN_F18, 0}, {BTN_F19, 0},
+    {BTN_F20, 0}, {BTN_F21, 0}, {BTN_F22, 0}, {BTN_F23, 0}, {BTN_F24, 0}, {BTN_F25, 0}, {BTN_F26, 0}, {BTN_F27, 0},
+    {BTN_PEN, 0}, {BTN_MOUSE, 0},
+    {BTN_SOFT, 0}, {BTN_MED, 0}, {BTN_FIRM, 0}
+  }
+};
+
+// Intuos 2 target tablet definitions
+const tablet_t intuos2_a6 = {
+  INTUOS2, { 0x4100, L"XD-0405-U" },
+  0x319c, 0x2968, 880, 11,
+  {
+    {BTN_NEW,0}, {BTN_OPEN,0}, {BTN_CLOSE, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0}, {BTN_EXIT, 0},
+    {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_PEN, 0}, {BTN_MOUSE, 0},
+    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+    NONE, NONE, NONE, NONE, NONE
+  }  
+};
+
+const tablet_t intuos2_a5 = {
+  INTUOS2, { 0x4200, L"XD-0608-U" },
+  0x4f60, 0x3f70, 880, 18,
+  {
+    {BTN_NEW, 320}, {BTN_OPEN, 1380}, {BTN_CLOSE, 2420}, {BTN_SAVE, 3490}, {BTN_PRINT, 4550}, {BTN_EXIT, 5520},
+    {BTN_CUT, 6990}, {BTN_COPY, 8070}, {BTN_PASTE, 9150}, {BTN_UNDO, 10130}, {BTN_DEL, 11210},
+    {BTN_F12, 12650}, {BTN_F13, 13700}, 
+    {BTN_PEN, 13700 + 1380}, {BTN_MOUSE, 13700 + 2480},
+    {BTN_SOFT, 13700 + 3820}, {BTN_MED, 13700 + 4890}, {BTN_FIRM, 13700 + 5940},
+    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+    NONE, NONE, NONE, NONE, NONE, NONE
+  }
+};
+const tablet_t intuos2_a4 = {
+  INTUOS2, { 0x4300, L"XD-0912-U" },
+  0x7710, 0x5dfc, 1100, 22,
+  {
+    {BTN_NEW, 300}, {BTN_OPEN, 1650}, {BTN_CLOSE, 3000}, {BTN_SAVE, 4300}, {BTN_PRINT, 5600}, {BTN_EXIT, 6900},
+    {BTN_CUT, 8600}, {BTN_COPY, 10000}, {BTN_PASTE, 11300}, {BTN_UNDO, 12600}, {BTN_DEL, 13900},
+    {BTN_F12, 15600}, {BTN_F13, 16900}, {BTN_F14, 18300}, {BTN_F15, 19600}, {BTN_F16, 20900}, 
+    {BTN_PEN, 22600}, {BTN_MOUSE, 23900}, {BTN_QUICKPOINT, 25300},
+    {BTN_SOFT, 26900}, {BTN_MED, 28200}, {BTN_FIRM, 29500},
+    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+    NONE, NONE
+  }
+};
+const tablet_t intuos2_a4plus = {
+  INTUOS2, { 0x4400, L"XD-1212-U" },
+  0x7710, 0x7bc0, 1100, 22,
+  {
+    {BTN_NEW, 300}, {BTN_OPEN, 1650}, {BTN_CLOSE, 3000}, {BTN_SAVE, 4300}, {BTN_PRINT, 5600}, {BTN_EXIT, 6900},
+    {BTN_CUT, 8600}, {BTN_COPY, 10000}, {BTN_PASTE, 11300}, {BTN_UNDO, 12600}, {BTN_DEL, 13900},
+    {BTN_F12, 15600}, {BTN_F13, 16900}, {BTN_F14, 18300}, {BTN_F15, 19600}, {BTN_F16, 20900}, 
+    {BTN_PEN, 22600}, {BTN_MOUSE, 23900}, {BTN_QUICKPOINT, 25300},
+    {BTN_SOFT, 26900}, {BTN_MED, 28200}, {BTN_FIRM, 29500},
+    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+    NONE, NONE
+  }
+};
+const tablet_t intuos2_a3 = {
+  INTUOS2, { 0x4800, L"XD-1218-U" },
+  0xb298, 0x7bc0, 1100, 32,
+  {
+    {BTN_NEW, 0}, {BTN_OPEN, 0}, {BTN_CLOSE, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0}, {BTN_EXIT, 0},
+    {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_UNDO, 0}, {BTN_DEL, 0},
+    {BTN_F12, 0}, {BTN_F13, 0}, {BTN_F14, 0}, {BTN_F15, 0}, {BTN_F16, 0}, {BTN_F17, 0}, {BTN_F18, 0}, {BTN_F19, 0},
+    {BTN_F20, 0}, {BTN_F21, 0}, {BTN_F22, 0}, {BTN_F23, 0}, {BTN_F24, 0}, {BTN_F25, 0}, {BTN_F26, 0}, {BTN_F27, 0},
+    {BTN_PEN, 0}, {BTN_MOUSE, 0},
+    {BTN_SOFT, 0}, {BTN_MED, 0}, {BTN_FIRM, 0}
+  }
+};  
+
+void adb_callback(uint8_t error_code) {
+  adb_command_just_finished = 1;
+  if (error_code != 0) {
+    the_packet.datalen = 0;
+    error_condition(error_code);
+  }
+}
+
+void do_adb_command(uint8_t command, uint8_t parameter, uint8_t length, uint8_t * data) {
+  adb_command_just_finished = 0;
+  the_packet.address = 4;
+  the_packet.command = command;
+  the_packet.parameter = parameter;
+  the_packet.datalen = length;
+
+  if (length) {
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+      memcpy((void*)the_packet.data, data, length);
+    }
+  }
+
+  initiateAdbTransfer(&the_packet, &adb_callback);
+  
+  // Spin!
+  while (!adb_command_just_finished);
+}
 
 // Parser for "talk register 1" messages
-void handle_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
+void handle_wacom_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
+  const tablet_t * target = 0; 
+  const source_tablet_t * source = 0;
+
   if (msg_length == 0)
     error_condition(10);
   if (msg_length < 8) {
     error_condition(msg_length);
   }
 
-  uint16_t id_product = 0xdead;
-  max_x = ((uint16_t)(msg[2]) << 8) | (uint16_t)msg[3];
-  max_y = ((uint16_t)(msg[4]) << 8) | (uint16_t)msg[5];
+  source_tablet.max_x = ((uint16_t)(msg[2]) << 8) | (uint16_t)msg[3];
+  source_tablet.max_y = ((uint16_t)(msg[4]) << 8) | (uint16_t)msg[5];
 
-  // Tablet ids taken from http://www.linux-usb.org/usb.ids
-  // Little-endian
-  switch (max_x) {
-  case 0x319c:
-    id_product = 0x4100;    // Intuos 2 4x5
-    break;
-  case 0x4f60:
-    id_product = 0x4200;    // Intuos 2 6x8
-    break;
-  case 0x7710:
-    if (max_y == 0x5dfc) {
-      id_product = 0x4300;    // Intuos 2 9x12
+  switch (source_tablet.tablet_family) {
+  case ULTRAPAD:
+    if (source_tablet.max_x == ultrapad_a6.max_x) {
+      source = &ultrapad_a6;
+      target = &intuos2_a6;
+    } else if (source_tablet.max_x == ultrapad_a5.max_x) {
+      source = &ultrapad_a5;
+      target = &intuos2_a5;      
+    } else if (source_tablet.max_x == ultrapad_a4.max_x) {
+      if (source_tablet.max_y == ultrapad_a4.max_y) {
+	source = &ultrapad_a4;
+	target = &intuos2_a4;      
+      } else {
+	source = &ultrapad_a4plus;
+	target = &intuos2_a4plus;      
+      }
     } else {
-      id_product = 0x4400;  // Intuos 2 12x12
-    } 
+      source = &ultrapad_a3;
+      target = &intuos2_a3;
+    }
     break;
-  case 0xb298: 
-    id_product = 0x4800;  // Intuos 2 12x18
+  case INTUOS1:
+    if (source_tablet.max_x == intuos1_a6.max_x) {
+      source = &intuos1_a6;
+      target = &intuos2_a6;
+    } else if (source_tablet.max_x == intuos1_a5.max_x) {
+      source = &intuos1_a5;
+      target = &intuos2_a5;      
+    } else if (source_tablet.max_x == intuos1_a4.max_x) {
+      if (source_tablet.max_y == intuos1_a4.max_y) {
+	source = &intuos1_a4;
+	target = &intuos2_a4;      
+      } else {
+	source = &intuos1_a4plus;
+	target = &intuos2_a4plus;      
+      }
+    } else {
+      source = &intuos1_a3;
+      target = &intuos2_a3;
+    }
     break;
   default:
-    // Error 1 - Failed to recognise tablet
-    error_condition(9);
     break;
   }
 
-  identify_product(id_product);
+  memcpy(&source_tablet, source, sizeof(source_tablet_t));
+  memcpy(&target_tablet, target, sizeof(tablet_t));
+  
+  identify_product();
+}
+
+void handle_calcomp_r1_message(uint8_t msg_length, volatile uint8_t * msg) {
+  switch (msg[1]) {
+  case 0:
+    //    source_tablet.tablet_format = target_tablet.tablet_format = A6;
+    // Calcomp 4x5
+    //id_product = 0x4100;    // Intuos 2 4x5
+    break;
+  case 1:
+    //    source_tablet.tablet_format = target_tablet.tablet_format = A5;
+    // Calcomp 6x9
+    //id_product = 0x4200;    // Intuos 2 6x8
+    break;
+  case 2:
+    //    source_tablet.tablet_format = target_tablet.tablet_format = A4PLUS;
+    // Calcomp 12x12
+    //id_product = 0x4400;    // Intuos 2 12x12
+    break;
+  case 3:
+    //    source_tablet.tablet_format = target_tablet.tablet_format = A3;
+    // Calcomp 12x18
+    //id_product = 0x4800;    // Intuos 2 12x18
+    break;
+  }
+ 
+  source_tablet.max_x = (msg[3] >> 1) * 1000;
+  source_tablet.max_y = (msg[4] >> 1) * 1000;
+  
+}
+
+void handle_r1_message(uint8_t msg_length, volatile uint8_t * msg) { 
+  switch (source_tablet.tablet_family) {
+  case INTUOS1:
+  case ULTRAPAD:
+    handle_wacom_r1_message(msg_length, msg);
+    break;
+  case CALCOMP:
+    handle_calcomp_r1_message(msg_length, msg);
+    break;
+  default:
+    break;
+  }
+}
+
+void wakeup_tablet() {
+  // First action : talk R3
+  do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_3, 0, adb_data);
+
+  // Determine tablet family based on handler ID
+  switch (the_packet.data[1]) {
+  case 0x3a:
+    // Ultrapad.  Switch to handler 68 (stop behaving like a bloody mouse)
+    source_tablet.tablet_family = ULTRAPAD;
+    adb_data[0] = the_packet.data[0] | 1; adb_data[1] = 0x68;
+    do_adb_command(ADB_COMMAND_LISTEN, ADB_REGISTER_3, 2, adb_data);
+    adb_data[0] &= 0xf8;
+    do_adb_command(ADB_COMMAND_LISTEN, ADB_REGISTER_1, 2, adb_data);
+    // Now get the tablet details
+    do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_1, 0, adb_data);
+    break;
+  case 0x40:
+    // Calcomp handler.  Need to tell the tablet stop behaving like a mouse
+    // This hapens with either a talk register 1 or a talk register 2, dependent 
+    // on firmware date.  No, we don't know the tablet's firmware date.
+    source_tablet.tablet_family = CALCOMP;
+    do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_1, 0, adb_data);
+    if (the_packet.datalen == 0) {
+      do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_2, 0, adb_data);
+    }
+    break;
+  case 0x6a:
+    // Intuos
+    source_tablet.tablet_family = INTUOS1;
+    adb_data[0] = 0x53; adb_data[1] = 0x8c;
+    do_adb_command(ADB_COMMAND_LISTEN, ADB_REGISTER_2, 2, adb_data);
+    adb_data[1] = 0x30;
+    do_adb_command(ADB_COMMAND_LISTEN, ADB_REGISTER_2, 2, adb_data);
+    // Now get the tablet details
+    do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_1, 0, adb_data);
+    break;
+  default:
+    break;
+  }
+ 
+  // And populate the USB configurator
+  handle_r1_message(the_packet.datalen, the_packet.data);
 }
 
 // Averaging of locations
@@ -236,7 +529,7 @@ void process_rotation_delta (uint8_t raw, uint8_t * shift, uint16_t * value) {
 }
 
 
-void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
+void handle_gd_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
   uint8_t index = 0;
   uint8_t transducer = 0;
   while (index < msg_length) {
@@ -424,12 +717,12 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
 			      &transducers[transducer].location_x_shift,
 			      &transducers[transducer].location_x,
 			      &transducers[transducer].location_x_old,
-			      max_x);
+			      source_tablet.max_x);
       process_location_delta (((msg[index] & 0x01) << 4) | (msg[index + 1] >> 4),
 			      &transducers[transducer].location_y_shift,
 			      &transducers[transducer].location_y,
 			      &transducers[transducer].location_y_old,
-			      max_y);
+			      source_tablet.max_y);
 
       // Now switch based on transducer type.
       switch (transducers[transducer].type & 0xff7) {
@@ -544,5 +837,153 @@ void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
     if (send_message == 1) {
       queue_message(TOOL_UPDATE, transducer);
     } 
+  }
+}
+
+// Handler for Ultrapad r0 message
+void handle_ud_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
+  uint8_t index = 0;
+
+  if (msg_length == 5) {
+    // This is an older ultrapad sending 5-byte, no-tilt messages
+    if (transducers[index].type == 0) {
+      // Coming into proximity
+      transducers[index].type = STYLUS_STANDARD;
+      transducers[index].id = 0x16002cd;  // Bernard's Intuos 2 pen
+      queue_message(TOOL_IN, index);
+    }
+
+    if (msg[0] & 0x80) {
+      transducers[index].touching = msg[2] & 0x40 >> 6;
+      transducers[index].location_x = (((uint16_t)msg[0] & 0x3f) << 8) | msg[1];
+      transducers[index].location_y = (((uint16_t)msg[2] & 0x3f) << 8) | msg[3];
+      transducers[index].pressure = msg[4] & 0x7f;
+      transducers[index].buttons = (msg[2] & 0x80) >> 7;
+      
+      queue_message(TOOL_UPDATE, index);
+    } else {
+      queue_message(TOOL_OUT, index);
+      memset((void*)&(transducers[index]), 0, sizeof(transducer_t));
+    }
+  } else if (msg_length == 8) {
+    // Ultrapad returning a full 8 byte packet.
+    // Not sure about this, only the 1212 model supports dual track anyway.
+    // Seems to be the only bit that's free, so must be tool id, right?
+    index = msg[0] & 0x80 ? 0 : 1;
+  
+    switch (msg[0] & 0x40) {
+    case 0x40:
+      // Proximity flag is set, this is a tool report
+      if (transducers[index].type == 0) {
+	// Entering proximity.  Identify the tool type.
+	if (msg[0] & 0x20) {
+	  if (msg[0] & 0x04) {
+	    transducers[index].type = STYLUS_STANDARD_INVERTED;
+	  } else {
+	    transducers[index].type = STYLUS_STANDARD;
+	  }
+	  transducers[index].id = 0x016002cd;  // Bernard's Intuos 2 pen
+	} else {
+	  transducers[index].type = CURSOR;
+	  transducers[index].id = 0xfe9ffd32;  // Invert Bernards's Intuos 2 Pen
+	}
+	queue_message(TOOL_IN, index);
+      }
+    
+      transducers[index].location_x = ((uint16_t)msg[1] << 8) | msg[2];
+      transducers[index].location_y = ((uint16_t)msg[3] << 8) | msg[4];
+
+      switch (transducers[index].type) {
+      case STYLUS_STANDARD:
+	transducers[index].buttons = (msg[0] & 0x06) >> 1;
+	// Drop through
+      case STYLUS_STANDARD_INVERTED:
+	transducers[index].touching = msg[0] & 0x01;
+
+	transducers[index].pressure = msg[5] ^ 0x80;
+	transducers[index].tilt_x = msg[6] - 0x40;
+	transducers[index].tilt_y = msg[7] - 0x40;
+	break;
+      default:
+	// Cursor
+	// Ultrapad cursor only has 4 buttons, intuos has 5.
+	// Ultrapad numbers buttons differently to intuos, not one bit per button.
+	// This breaks chording.
+	switch (msg[0] & 0x0f) {
+	case 1: transducers[index].buttons = 2; break;
+	case 2: transducers[index].buttons = 1; break;
+	case 3: transducers[index].buttons = 8; break;
+	case 4: transducers[index].buttons = 4; break;
+	default: transducers[index].buttons = 0; break;
+	}
+
+	transducers[index].touching = 1;
+	break;
+      }
+      queue_message(TOOL_UPDATE, index);
+      break;
+    default:
+      if (msg[0] & 0x10) {
+	uint8_t tool_button = msg[0] & 0x0f;
+	// Macro button click.
+	// Synthesize a tool in proximity message
+	if (msg[0] & 0x20) {
+	  transducers[index].type = STYLUS_STANDARD;
+	  transducers[index].id = 0x016002cd;  // Bernard's Intuos 2 pen
+	  tool_button >>= 1;
+	} else {
+	  transducers[index].type = CURSOR;
+	  transducers[index].id = 0xfe9ffd32;  // Invert Bernards's Intuos 2 Pen
+	}
+	queue_message(TOOL_IN, index);
+	// Then click and back out
+	synthesize_button(index, source_tablet.buttons[msg[2]].button, tool_button);
+	// No need to queue a tool out, we get one anyway
+      } else {
+	// Out of proximity.
+	queue_message(TOOL_OUT, index);
+	memset((void*)&(transducers[index]), 0, sizeof(transducer_t));
+      }
+      break;
+    }
+  } else {
+    error_condition(0xff);
+  }
+}
+
+void handle_calcomp_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
+}
+
+// Overall r0 message handler
+void handle_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
+  switch (source_tablet.tablet_family) {
+  case INTUOS1:
+    handle_gd_r0_message(msg_length, msg);
+    break;
+  case ULTRAPAD:
+    handle_ud_r0_message(msg_length, msg);
+    break;
+  case CALCOMP:
+    handle_calcomp_r0_message(msg_length, msg);
+  default:
+    break;
+  }
+}
+
+void poll_tablet() {
+  // The tablet is now up, we can start polling R0 for data
+  while (1) {
+    do_adb_command(ADB_COMMAND_TALK, ADB_REGISTER_0, 0, adb_data);
+    if (the_packet.datalen > 0) {
+      adb_data[0] = the_packet.data[0];
+      adb_data[1] = the_packet.data[1];
+      adb_data[2] = the_packet.data[2];
+      adb_data[3] = the_packet.data[3];
+      adb_data[4] = the_packet.data[4];
+      adb_data[5] = the_packet.data[5];
+      adb_data[6] = the_packet.data[6];
+      adb_data[7] = the_packet.data[7];
+      handle_r0_message(the_packet.datalen, adb_data);
+    }
   }
 }

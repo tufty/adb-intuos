@@ -33,10 +33,10 @@ typedef struct {
       unsigned int command:2;
       unsigned int address:4;
     };
-    byte headerRawByte;
+    uint8_t headerRawByte;
   };
-  byte data[8];
-  byte datalen;
+  uint8_t data[8];
+  uint8_t datalen;
 } AdbPacket;
 
 void adb_init(void);
@@ -46,5 +46,10 @@ void initiateAdbTransfer(volatile AdbPacket* adbPacket, void (*done_callback)(ui
 #define ADB_COMMAND_FLUSH       1
 #define ADB_COMMAND_LISTEN 	2
 #define ADB_COMMAND_TALK 	3
+
+#define ADB_REGISTER_0          0
+#define ADB_REGISTER_1          1
+#define ADB_REGISTER_2          2
+#define ADB_REGISTER_3          3
 
 #endif /* __ADB_CODEC_H__ */

@@ -26,7 +26,8 @@
 typedef enum message_type {
   TOOL_IN,
   TOOL_OUT,
-  TOOL_UPDATE
+  TOOL_UPDATE,
+  BUTTON_CLICK
 } message_type_t;
 
 typedef enum gd_tool_type {

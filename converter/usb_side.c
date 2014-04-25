@@ -29,17 +29,6 @@
 #include "led.h"
 #include "debug.h"
 
-const product_id_t product_ids[] = {
-  {0x4100, L"XD-0405-U"},
-  {0x4200, L"XD-0608-U"},
-  {0x4300, L"XD-0912-U"},
-  {0x4400, L"XD-1212-U"},
-  {0x4800, L"XD-1218-U"}
-};
-
-// Number of products we fake
-const uint8_t n_product_ids = 5;
-
 // Tablet device descriptor
 // Pre-set up with the stuff we already know
 uint8_t device_descriptor[18] = {
@@ -186,17 +175,11 @@ const usb_string_t empty_string = { 0x04, 0x03, L"?" };
 
 // Do product identification
 //
-void identify_product(uint16_t product_id) {
-  for (uint8_t i = 0; i < n_product_ids; i++) {
-    product_id_t * pid = &product_ids[i];
-    if (pid->product_id == product_id) {
-      // Set up target device descriptor
-      device_descriptor[10] = (uint8_t)(pid->product_id >> 8);
-      device_descriptor[11] = (uint8_t)(pid->product_id & 0xff);
-      memcpy((void *)(string2.string), (const void *)(pid->product_name), string2.length - 2);
-      return;
-    }
-  }
+void identify_product() {
+  // Set up target device descriptor
+  device_descriptor[10] = (uint8_t)(target_tablet.product_id.product_id >> 8);
+  device_descriptor[11] = (uint8_t)(target_tablet.product_id.product_id & 0xff);
+  memcpy((void *)(string2.string), (const void *)(&target_tablet.product_id.product_name), string2.length - 2);
 }
 
 // Private stuff
@@ -221,7 +204,7 @@ void queue_message(message_type_t type, uint8_t index) {
     }
   }
   LED_TOGGLE;
-  usb_send_packet(&usb_report, 10, WACOM_INTUOS2_PEN_ENDPOINT, 25);
+  usb_send_packet(usb_report.bytes, 10, WACOM_INTUOS2_PEN_ENDPOINT, 25);
   LED_TOGGLE;
 }
 
@@ -278,11 +261,11 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
   }
 
   // Transformed data
-  transformed = location_to_location(transducers[index].location_x);
+  transformed = x_to_x(transducers[index].location_x);
   packet->x_hi = transformed >> 8;
   packet->x_lo = transformed & 0xff;
 
-  transformed = location_to_location(transducers[index].location_y);
+  transformed = y_to_y(transducers[index].location_y);
   packet->y_hi = transformed >> 8;
   packet->y_lo = transformed & 0xff;
 
@@ -311,7 +294,6 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
     // Tell driver what packet we are.
     packet->bit7 = 1;
     packet->bit6 = 1;
-    packet->proximity = 1;
     packet->bit3 = 1;
 
     if (transducers[index].output_state == 0) {
@@ -341,11 +323,39 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
     packet->bit1 = transducers[index].output_state;
 
     break;
+  case CURSOR:
+    // Identify the packet
+    packet->bit7 = 1;
+    packet->bit6 = 1;
+    packet->bit4 = 1;
+    // Might need to adjust the ADB side to make these correspond correctly.
+    // Bernard thinks this goes to byte 8.  I'm not sure he's ever tested it.
+    packet->payload[2] = transducers[index].buttons;
+    //    packet->payload[1] |= 0x1f;
+    break;
   default:
     while(1) {
       signal_pause();
       signal_word_bcd(transducers[index].type & 0xffff, 0);
     }
     break;
-      }
+  }
 }    
+
+void synthesize_button(uint8_t index, uint8_t button, uint8_t tool_switch) {
+  // TODO Need to work this out for intuos 3+ targets
+
+  transducers[index].location_y = target_tablet.button_width >> 1;
+  // Find which button we're looking for, target-side.
+  for (int i = 0; i < target_tablet.n_buttons; i++) {
+    if (target_tablet.buttons[i].button == button) {
+      transducers[index].location_x = target_tablet.buttons[i].x + (target_tablet.button_width >> 1);
+      break;
+    }
+  }
+  transducers[index].touching = 1;
+  transducers[index].buttons = tool_switch;
+  queue_message(TOOL_UPDATE, index);
+  transducers[index].buttons = 0;
+  queue_message(TOOL_UPDATE, index);
+}
