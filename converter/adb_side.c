@@ -51,15 +51,15 @@ void handle_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
   case 0x4f60:
     id_product = 0x4200;    // Intuos 2 6x8
     break;
-  case 0x594c:
-    id_product = 0x4300;    // Intuos 2 9x12
-    break;
   case 0x7710:
-    if (max_y == max_x) {
+    if (max_y == 0x5dfc) {
+      id_product = 0x4300;    // Intuos 2 9x12
+    } else {
       id_product = 0x4400;  // Intuos 2 12x12
-    } else { 
-      id_product = 0x4800;  // Intuos 2 12x18
-    }
+    } 
+    break;
+  case 0xb298: 
+    id_product = 0x4800;  // Intuos 2 12x18
     break;
   default:
     // Error 1 - Failed to recognise tablet
