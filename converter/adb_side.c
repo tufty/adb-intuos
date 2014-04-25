@@ -213,8 +213,8 @@ void do_adb_command(uint8_t command, uint8_t parameter, uint8_t length, uint8_t 
 
 // Parser for "talk register 1" messages
 void handle_wacom_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
-  const tablet_t * target; 
-  const source_tablet_t * source;
+  const tablet_t * target = 0; 
+  const source_tablet_t * source = 0;
 
   if (msg_length == 0)
     error_condition(10);
@@ -900,14 +900,23 @@ void handle_ud_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
       case STYLUS_STANDARD_INVERTED:
 	transducers[index].touching = msg[0] & 0x01;
 
-	transducers[index].pressure = msg[5];
+	transducers[index].pressure = msg[5] ^ 0x80;
 	transducers[index].tilt_x = msg[6] - 0x40;
 	transducers[index].tilt_y = msg[7] - 0x40;
 	break;
       default:
 	// Cursor
 	// Ultrapad cursor only has 4 buttons, intuos has 5.
-	transducers[index].buttons = msg[0] & 0x0f;
+	// Ultrapad numbers buttons differently to intuos, not one bit per button.
+	// This breaks chording.
+	switch (msg[0] & 0x0f) {
+	case 1: transducers[index].buttons = 2; break;
+	case 2: transducers[index].buttons = 1; break;
+	case 3: transducers[index].buttons = 8; break;
+	case 4: transducers[index].buttons = 4; break;
+	default: transducers[index].buttons = 0; break;
+	}
+
 	transducers[index].touching = 1;
 	break;
       }

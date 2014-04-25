@@ -34,7 +34,8 @@ uint16_t x_to_x(uint16_t raw) {
   case CALCOMP:
   case ULTRAPAD:
     // Rescale - Calcomps have lower DPI, as do old ultrapads.
-    transformed = raw * target_tablet.max_x;
+    transformed = raw;
+    transformed *= target_tablet.max_x;
     transformed /= source_tablet.max_x;
     return transformed;
   default:
