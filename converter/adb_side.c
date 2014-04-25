@@ -19,6 +19,7 @@
 // THE SOFTWARE.
 
 #include <util/atomic.h>
+#include <avr/pgmspace.h>
 #include "adb_side.h"
 #include "adb_codec.h"
 #include "usb_side.h"
@@ -38,8 +39,8 @@ transducer_t transducers[2];
 source_tablet_t source_tablet;
 tablet_t target_tablet;
 
-const source_tablet_t ultrapad_a6;
-const source_tablet_t ultrapad_a5 = {
+const source_tablet_t ultrapad_a6 PROGMEM;
+const source_tablet_t ultrapad_a5 PROGMEM = {
   ULTRAPAD,
   0x5000, 0x3c00, 880, 18,
   {
@@ -52,11 +53,11 @@ const source_tablet_t ultrapad_a5 = {
     NONE, NONE, NONE, NONE, NONE, NONE
   }
 };
-const source_tablet_t ultrapad_a4;
-const source_tablet_t ultrapad_a4plus;
-const source_tablet_t ultrapad_a3;
+const source_tablet_t ultrapad_a4 PROGMEM;
+const source_tablet_t ultrapad_a4plus PROGMEM;
+const source_tablet_t ultrapad_a3 PROGMEM;
 
-const source_tablet_t intuos1_a6 = {  // Intuos 1 A6
+const source_tablet_t intuos1_a6 PROGMEM = {  // Intuos 1 A6
   INTUOS1, 
   0x319c, 0x2968, 880, 11,
   {
@@ -67,7 +68,7 @@ const source_tablet_t intuos1_a6 = {  // Intuos 1 A6
     NONE, NONE, NONE, NONE, NONE
   }
 };
-const source_tablet_t intuos1_a5 = {  // Intuos 1 A5
+const source_tablet_t intuos1_a5 PROGMEM = {  // Intuos 1 A5
   INTUOS1, 
   0x4f60, 0x3f70, 880, 18,
   {
@@ -80,7 +81,7 @@ const source_tablet_t intuos1_a5 = {  // Intuos 1 A5
     NONE, NONE, NONE, NONE, NONE, NONE
   }
 };
-const source_tablet_t intuos1_a4 = {  // Intuos 1 A4
+const source_tablet_t intuos1_a4 PROGMEM = {  // Intuos 1 A4
   INTUOS1, 
   0x7710, 0x5dfc, 1100, 22,
   {
@@ -93,7 +94,7 @@ const source_tablet_t intuos1_a4 = {  // Intuos 1 A4
     NONE, NONE
   }
 };
-const source_tablet_t intuos1_a4plus = {  // Intuos 1 A4 Plus
+const source_tablet_t intuos1_a4plus PROGMEM = {  // Intuos 1 A4 Plus
   INTUOS1, 
   0x7710, 0x7bc0, 1100, 22,
   {
@@ -106,7 +107,7 @@ const source_tablet_t intuos1_a4plus = {  // Intuos 1 A4 Plus
     NONE, NONE
   }
 };
-const source_tablet_t intuos1_a3 = { // Intuos 1 A3
+const source_tablet_t intuos1_a3 PROGMEM = { // Intuos 1 A3
   INTUOS1, 
   0xb298, 0x7bc0, 1100, 32,
   {
@@ -120,7 +121,7 @@ const source_tablet_t intuos1_a3 = { // Intuos 1 A3
 };
 
 // Intuos 2 target tablet definitions
-const tablet_t intuos2_a6 = {
+const tablet_t intuos2_a6 PROGMEM = {
   INTUOS2, { 0x4100, L"XD-0405-U" },
   0x319c, 0x2968, 880, 11,
   {
@@ -132,7 +133,7 @@ const tablet_t intuos2_a6 = {
   }  
 };
 
-const tablet_t intuos2_a5 = {
+const tablet_t intuos2_a5 PROGMEM = {
   INTUOS2, { 0x4200, L"XD-0608-U" },
   0x4f60, 0x3f70, 880, 18,
   {
@@ -145,7 +146,7 @@ const tablet_t intuos2_a5 = {
     NONE, NONE, NONE, NONE, NONE, NONE
   }
 };
-const tablet_t intuos2_a4 = {
+const tablet_t intuos2_a4 PROGMEM = {
   INTUOS2, { 0x4300, L"XD-0912-U" },
   0x7710, 0x5dfc, 1100, 22,
   {
@@ -158,7 +159,7 @@ const tablet_t intuos2_a4 = {
     NONE, NONE
   }
 };
-const tablet_t intuos2_a4plus = {
+const tablet_t intuos2_a4plus PROGMEM = {
   INTUOS2, { 0x4400, L"XD-1212-U" },
   0x7710, 0x7bc0, 1100, 22,
   {
@@ -171,7 +172,7 @@ const tablet_t intuos2_a4plus = {
     NONE, NONE
   }
 };
-const tablet_t intuos2_a3 = {
+const tablet_t intuos2_a3 PROGMEM = {
   INTUOS2, { 0x4800, L"XD-1218-U" },
   0xb298, 0x7bc0, 1100, 32,
   {
@@ -227,14 +228,14 @@ void handle_wacom_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
 
   switch (source_tablet.tablet_family) {
   case ULTRAPAD:
-    if (source_tablet.max_x == ultrapad_a6.max_x) {
+    if (source_tablet.max_x == pgm_read_word(&ultrapad_a6.max_x)) {
       source = &ultrapad_a6;
       target = &intuos2_a6;
-    } else if (source_tablet.max_x == ultrapad_a5.max_x) {
+    } else if (source_tablet.max_x == pgm_read_word(&ultrapad_a5.max_x)) {
       source = &ultrapad_a5;
       target = &intuos2_a5;      
-    } else if (source_tablet.max_x == ultrapad_a4.max_x) {
-      if (source_tablet.max_y == ultrapad_a4.max_y) {
+    } else if (source_tablet.max_x == pgm_read_word(&ultrapad_a4.max_x)) {
+      if (source_tablet.max_y == pgm_read_word(&ultrapad_a4.max_y)) {
 	source = &ultrapad_a4;
 	target = &intuos2_a4;      
       } else {
@@ -247,14 +248,14 @@ void handle_wacom_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
     }
     break;
   case INTUOS1:
-    if (source_tablet.max_x == intuos1_a6.max_x) {
+    if (source_tablet.max_x == pgm_read_word(&intuos1_a6.max_x)) {
       source = &intuos1_a6;
       target = &intuos2_a6;
-    } else if (source_tablet.max_x == intuos1_a5.max_x) {
+    } else if (source_tablet.max_x == pgm_read_word(&intuos1_a5.max_x)) {
       source = &intuos1_a5;
       target = &intuos2_a5;      
-    } else if (source_tablet.max_x == intuos1_a4.max_x) {
-      if (source_tablet.max_y == intuos1_a4.max_y) {
+    } else if (source_tablet.max_x == pgm_read_word(&intuos1_a4.max_x)) {
+      if (source_tablet.max_y == pgm_read_word(&intuos1_a4.max_y)) {
 	source = &intuos1_a4;
 	target = &intuos2_a4;      
       } else {
@@ -270,8 +271,8 @@ void handle_wacom_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
     break;
   }
 
-  memcpy(&source_tablet, source, sizeof(source_tablet_t));
-  memcpy(&target_tablet, target, sizeof(tablet_t));
+  memcpy_P(&source_tablet, source, sizeof(source_tablet_t));
+  memcpy_P(&target_tablet, target, sizeof(tablet_t));
   
   identify_product();
 }
