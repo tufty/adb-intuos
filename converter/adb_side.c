@@ -38,10 +38,75 @@ transducer_t transducers[2];
 tablet_t source_tablet;
 tablet_t target_tablet;
 
+const target_t adb_tablets[] = {
+  {  // Intuos 1 A6
+    INTUOS1, { 0x0000, L"GD-0405-A" },
+    2450, 0x319c, 0x2968, 880, 880, 11,
+    {
+      {BTN_NEW,0}, {BTN_OPEN,0}, {BTN_CLOSE, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0}, {BTN_EXIT, 0},
+      {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_PEN, 0}, {BTN_MOUSE, 0},
+      NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+      NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+      NONE, NONE, NONE, NONE, NONE
+    }
+  },
+  {  // Intuos 1 A5
+    INTUOS1, { 0x0000, L"GD-0608-A" },
+    2540, 0x4f60, 0x3f70, 880, 880, 18,
+    {
+      {BTN_NEW, 320}, {BTN_OPEN, 1380}, {BTN_CLOSE, 2420}, {BTN_SAVE, 3490}, {BTN_PRINT, 4550}, {BTN_EXIT, 5520},
+      {BTN_CUT, 6990}, {BTN_COPY, 8070}, {BTN_PASTE, 9150}, {BTN_UNDO, 10130}, {BTN_DEL, 11210},
+      {BTN_F12, 12650}, {BTN_F13, 13700}, 
+      {BTN_PEN, 13700 + 1380}, {BTN_MOUSE, 13700 + 2480},
+      {BTN_SOFT, 13700 + 3820}, {BTN_MED, 13700 + 4890}, {BTN_FIRM, 13700 + 5940},
+      NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+      NONE, NONE, NONE, NONE, NONE, NONE
+    }
+  },
+  {  // Intuos 1 A4
+    INTUOS1, { 0x0000, L"GD-0912-A" },
+    2540, 0x7710, 0x5dfc, 1100, 1100, 21,
+    {
+      {BTN_NEW, 0}, {BTN_OPEN, 0}, {BTN_CLOSE, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0}, {BTN_EXIT, 0},
+      {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_UNDO, 0}, {BTN_DEL, 0},
+      {BTN_F12, 0}, {BTN_F13, 0}, {BTN_F14, 0}, {BTN_F15, 0}, {BTN_F16, 0}, 
+      {BTN_PEN, 0}, {BTN_MOUSE, 0},
+      {BTN_SOFT, 0}, {BTN_MED, 0}, {BTN_FIRM, 0},
+      NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+      NONE, NONE, NONE
+    }
+  },
+  {  // Intuos 1 A4 Plus
+    INTUOS1, { 0x4400, L"GD-1212-A" },
+    2540, 0x7710, 0x7bc0, 1100, 1100, 21,
+    {
+      {BTN_NEW, 0}, {BTN_OPEN, 0}, {BTN_CLOSE, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0}, {BTN_EXIT, 0},
+      {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_UNDO, 0}, {BTN_DEL, 0},
+      {BTN_F12, 0}, {BTN_F13, 0}, {BTN_F14, 0}, {BTN_F15, 0}, {BTN_F16, 0}, 
+      {BTN_PEN, 0}, {BTN_MOUSE, 0},
+      {BTN_SOFT, 0}, {BTN_MED, 0}, {BTN_FIRM, 0},
+      NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
+      NONE, NONE, NONE
+    }
+  },
+  { // Intuos 1 A3
+    INTUOS2, { 0x0000, L"GD-1218-A" },
+    2540, 0xb298, 0x7bc0, 1100, 1100, 32,
+    {
+      {BTN_NEW, 0}, {BTN_OPEN, 0}, {BTN_CLOSE, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0}, {BTN_EXIT, 0},
+      {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_UNDO, 0}, {BTN_DEL, 0},
+      {BTN_F12, 0}, {BTN_F13, 0}, {BTN_F14, 0}, {BTN_F15, 0}, {BTN_F16, 0}, {BTN_F17, 0}, {BTN_F18, 0}, {BTN_F19, 0},
+      {BTN_F20, 0}, {BTN_F21, 0}, {BTN_F22, 0}, {BTN_F23, 0}, {BTN_F24, 0}, {BTN_F25, 0}, {BTN_F26, 0}, {BTN_F27, 0},
+      {BTN_PEN, 0}, {BTN_MOUSE, 0},
+      {BTN_SOFT, 0}, {BTN_MED, 0}, {BTN_FIRM, 0}
+    }
+  }
+}
+
 // Intuos 2 target tablet definitions
 const tablet_t intuos2_a6 = {
   INTUOS2, { 0x4100, L"XD-0405-U" },
-  2450, 0x0000, 0x0000, 880, 880, 11,
+  2540, 0x0000, 0x0000, 880, 880, 11,
   {
     {BTN_NEW,0}, {BTN_OPEN,0}, {BTN_CLOSE, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0}, {BTN_EXIT, 0},
     {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_PEN, 0}, {BTN_MOUSE, 0},
@@ -53,7 +118,7 @@ const tablet_t intuos2_a6 = {
 
 const tablet_t intuos2_a5 = {
   INTUOS2, { 0x4200, L"XD-0608-U" },
-  2450, 0x0000, 0x0000, 880, 880, 18,
+  2540, 0x0000, 0x0000, 880, 880, 18,
   {
     {BTN_NEW, 320}, {BTN_OPEN, 1380}, {BTN_CLOSE, 2420}, {BTN_SAVE, 3490}, {BTN_PRINT, 4550}, {BTN_EXIT, 5520},
     {BTN_CUT, 6990}, {BTN_COPY, 8070}, {BTN_PASTE, 9150}, {BTN_UNDO, 10130}, {BTN_DEL, 11210},
@@ -66,7 +131,7 @@ const tablet_t intuos2_a5 = {
 };
 const tablet_t intuos2_a4 = {
   INTUOS2, { 0x4300, L"XD-0912-U" },
-  2450, 0x0000, 0x0000, 1100, 1100, 21,
+  2540, 0x0000, 0x0000, 1100, 1100, 21,
   {
     {BTN_NEW, 0}, {BTN_OPEN, 0}, {BTN_CLOSE, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0}, {BTN_EXIT, 0},
     {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_UNDO, 0}, {BTN_DEL, 0},
@@ -79,7 +144,7 @@ const tablet_t intuos2_a4 = {
 };
 const tablet_t intuos2_a4plus = {
   INTUOS2, { 0x4400, L"XD-1212-U" },
-  2450, 0x0000, 0x0000, 1100, 1100, 21,
+  2540, 0x0000, 0x0000, 1100, 1100, 21,
   {
     {BTN_NEW, 0}, {BTN_OPEN, 0}, {BTN_CLOSE, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0}, {BTN_EXIT, 0},
     {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_UNDO, 0}, {BTN_DEL, 0},
@@ -92,7 +157,7 @@ const tablet_t intuos2_a4plus = {
 };
 const tablet_t intuos2_a3 = {
   INTUOS2, { 0x4800, L"XD-1218-U" },
-  2450, 0x0000, 0x0000, 1100, 1100, 32,
+  2540, 0x0000, 0x0000, 1100, 1100, 32,
   {
     {BTN_NEW, 0}, {BTN_OPEN, 0}, {BTN_CLOSE, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0}, {BTN_EXIT, 0},
     {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_UNDO, 0}, {BTN_DEL, 0},
@@ -138,7 +203,7 @@ void handle_wacom_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
     error_condition(msg_length);
   }
 
-  source_tablet.dpi = 2450;
+  source_tablet.dpi = 2540;
 
   source_tablet.max_x = ((uint16_t)(msg[2]) << 8) | (uint16_t)msg[3];
   source_tablet.max_y = ((uint16_t)(msg[4]) << 8) | (uint16_t)msg[5];
