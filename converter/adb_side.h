@@ -24,6 +24,6 @@
 #include <stdint.h>
 
 void wakeup_tablet();
-void poll_tablet();
+void __attribute__((noreturn)) poll_tablet();
 
 #endif
