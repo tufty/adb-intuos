@@ -34,8 +34,8 @@ uint16_t x_to_x(uint16_t raw) {
   case CALCOMP:
   case ULTRAPAD:
     // Rescale - Calcomps have lower DPI, as do old ultrapads.
-    transformed = raw * target_tablet.max_y;
-    transformed /= source_tablet.max_y;
+    transformed = raw * target_tablet.max_x;
+    transformed /= source_tablet.max_x;
     return transformed;
   default:
     return raw;
@@ -49,10 +49,10 @@ uint16_t y_to_y(uint16_t raw) {
     case ULTRAPAD: 
       // Rescale y to fit the active area
       // Also deals with case where old ultrapad (?) dpi is lower.
-      transformed = target_tablet.max_y - target_tablet.menu_height;
+      transformed = target_tablet.max_y - target_tablet.button_width;
       transformed *= raw;
       transformed /= source_tablet.max_y;
-      return (uint16_t)transformed + target_tablet.menu_height;
+      return (uint16_t)transformed + target_tablet.button_width;
     case INTUOS1:
       return raw;
     default:

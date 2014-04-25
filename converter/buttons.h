@@ -70,10 +70,17 @@
 // side : 3.2mm
 // interblock : 4.1mm
 
+// UD0608 I have
+// UD 1212 (and presumably 0912) has setup, 20 buttons, soft/firm
+// PF1 ... PF9 / cut / copy / paste / undo / del / new / open / save / print / abs / rel 
+// UD 1218
+
 typedef struct {
   enum {
-    BTN_NONE, BTN_NEW, BTN_OPEN, BTN_CLOSE, BTN_SAVE, BTN_PRINT, BTN_EXIT,
+    BTN_NONE, 
+    BTN_NEW, BTN_OPEN, BTN_CLOSE, BTN_SAVE, BTN_PRINT, BTN_EXIT,
     BTN_CUT, BTN_COPY, BTN_PASTE, BTN_UNDO, BTN_DEL,
+    BTN_F1, BTN_F2, BTN_F3, BTN_F4, BTN_F5, BTN_F6, BTN_F7, BTN_F8, BTN_F9, BTN_F10, BTN_F11,
     BTN_F12, BTN_F13, BTN_F14, BTN_F15, BTN_F16, BTN_F17, BTN_F18, BTN_F19,
     BTN_F20, BTN_F21, BTN_F22, BTN_F23, BTN_F24, BTN_F25, BTN_F26, BTN_F27,
     BTN_PEN, BTN_MOUSE, BTN_QUICKPOINT,

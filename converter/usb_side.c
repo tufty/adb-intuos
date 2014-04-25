@@ -329,6 +329,7 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
     packet->bit4 = 1;
     // Might need to adjust the ADB side to make these correspond correctly.
     packet->payload[2] = transducers[index].buttons;
+    break;
   default:
     while(1) {
       signal_pause();
@@ -341,7 +342,7 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
 void synthesize_button(uint8_t index, uint8_t button, uint8_t tool_switch) {
   // TODO Need to work this out for intuos 3+ targets
 
-  transducers[index].location_y = target_tablet.menu_height >> 1;
+  transducers[index].location_y = target_tablet.button_width >> 1;
   // Find which button we're looking for, target-side.
   for (int i = 0; i < target_tablet.n_buttons; i++) {
     if (target_tablet.buttons[i].button == button) {
