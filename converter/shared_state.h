@@ -35,7 +35,7 @@ typedef struct {
   uint16_t max_y;
   uint16_t button_width;
   uint8_t n_buttons;
-  button_t buttons[32];
+  button_t buttons[35];
 } source_tablet_t;
 
 typedef struct {
@@ -45,7 +45,7 @@ typedef struct {
   uint16_t max_y;
   uint16_t button_width;
   uint8_t n_buttons;
-  button_t buttons[32];
+  button_t buttons[35];
 } tablet_t;
 
 extern transducer_t transducers[2];

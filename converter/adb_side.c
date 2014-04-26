@@ -39,7 +39,10 @@ transducer_t transducers[2];
 source_tablet_t source_tablet;
 tablet_t target_tablet;
 
-const source_tablet_t ultrapad_a6 PROGMEM;
+const source_tablet_t ultrapad_a6 PROGMEM = {
+  ULTRAPAD,
+  0x3200, 0x2580, 880, 0, {}
+};
 const source_tablet_t ultrapad_a5 PROGMEM = {
   ULTRAPAD,
   0x5000, 0x3c00, 880, 18,
@@ -48,24 +51,59 @@ const source_tablet_t ultrapad_a5 PROGMEM = {
     {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_UNDO, 0}, {BTN_DEL, 0},
     {BTN_NEW, 0}, {BTN_OPEN, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0},
     {BTN_PEN, 0}, {BTN_MOUSE, 0}, 
-    {BTN_SOFT, 0}, {BTN_FIRM, 0},
-    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
-    NONE, NONE, NONE, NONE, NONE, NONE
+    {BTN_SOFT, 0}, {BTN_FIRM, 0}
   }
 };
-const source_tablet_t ultrapad_a4 PROGMEM;
-const source_tablet_t ultrapad_a4plus PROGMEM;
-const source_tablet_t ultrapad_a3 PROGMEM;
+const source_tablet_t ultrapad_a4 PROGMEM = {
+  ULTRAPAD,
+  0x7710, 0x5dfc, 1100, 23,
+  {
+    {BTN_SETUP, 0}, 
+    {BTN_F1, 0}, {BTN_F2, 0}, {BTN_F3, 0}, {BTN_F4, 0}, {BTN_F5, 0},
+    {BTN_F6, 0}, {BTN_F7, 0}, {BTN_F8, 0}, {BTN_F9, 0},
+    {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_UNDO, 0}, {BTN_DEL, 0},
+    {BTN_NEW, 0}, {BTN_OPEN, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0},
+    {BTN_PEN, 0}, {BTN_MOUSE, 0}, 
+    {BTN_SOFT, 0}, {BTN_FIRM, 0}
+  }
+};
+const source_tablet_t ultrapad_a4plus PROGMEM = {
+  ULTRAPAD,
+  0x7710, 0x7710, 1100, 23,
+  {
+    {BTN_SETUP, 0}, 
+    {BTN_F1, 0}, {BTN_F2, 0}, {BTN_F3, 0}, {BTN_F4, 0}, {BTN_F5, 0},
+    {BTN_F6, 0}, {BTN_F7, 0}, {BTN_F8, 0}, {BTN_F9, 0},
+    {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_UNDO, 0}, {BTN_DEL, 0},
+    {BTN_NEW, 0}, {BTN_OPEN, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0},
+    {BTN_PEN, 0}, {BTN_MOUSE, 0}, 
+    {BTN_SOFT, 0}, {BTN_FIRM, 0}
+  }
+};
+
+const source_tablet_t ultrapad_a3 PROGMEM = {
+  ULTRAPAD,
+  0xb298, 0x7710, 1100, 34,
+  {
+    {BTN_SETUP, 0}, 
+    {BTN_F1, 0}, {BTN_F2, 0}, {BTN_F3, 0}, {BTN_F4, 0}, {BTN_F5, 0},
+    {BTN_F6, 0}, {BTN_F7, 0}, {BTN_F8, 0}, {BTN_F9, 0}, {BTN_F10, 0},
+    {BTN_F11, 0}, {BTN_F12, 0}, {BTN_F13, 0}, {BTN_F14, 0}, {BTN_F15, 0},
+    {BTN_F16, 0}, {BTN_F17, 0}, {BTN_F18, 0}, {BTN_F19, 0}, {BTN_F20, 0}, {BTN_F21, 0},
+    {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_UNDO, 0}, {BTN_DEL, 0},
+    {BTN_NEW, 0}, {BTN_OPEN, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0},
+    {BTN_PEN, 0}, {BTN_MOUSE, 0}, 
+    {BTN_SOFT, 0}, {BTN_FIRM, 0}
+  }
+};
+
 
 const source_tablet_t intuos1_a6 PROGMEM = {  // Intuos 1 A6
   INTUOS1, 
   0x319c, 0x2968, 880, 11,
   {
     {BTN_NEW,0}, {BTN_OPEN,0}, {BTN_CLOSE, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0}, {BTN_EXIT, 0},
-    {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_PEN, 0}, {BTN_MOUSE, 0},
-    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
-    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
-    NONE, NONE, NONE, NONE, NONE
+    {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_PEN, 0}, {BTN_MOUSE, 0}
   }
 };
 const source_tablet_t intuos1_a5 PROGMEM = {  // Intuos 1 A5
@@ -76,9 +114,7 @@ const source_tablet_t intuos1_a5 PROGMEM = {  // Intuos 1 A5
     {BTN_CUT, 6990}, {BTN_COPY, 8070}, {BTN_PASTE, 9150}, {BTN_UNDO, 10130}, {BTN_DEL, 11210},
     {BTN_F12, 12650}, {BTN_F13, 13700}, 
     {BTN_PEN, 13700 + 1380}, {BTN_MOUSE, 13700 + 2480},
-    {BTN_SOFT, 13700 + 3820}, {BTN_MED, 13700 + 4890}, {BTN_FIRM, 13700 + 5940},
-    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
-    NONE, NONE, NONE, NONE, NONE, NONE
+    {BTN_SOFT, 13700 + 3820}, {BTN_MED, 13700 + 4890}, {BTN_FIRM, 13700 + 5940}
   }
 };
 const source_tablet_t intuos1_a4 PROGMEM = {  // Intuos 1 A4
@@ -89,9 +125,7 @@ const source_tablet_t intuos1_a4 PROGMEM = {  // Intuos 1 A4
     {BTN_CUT, 8600}, {BTN_COPY, 10000}, {BTN_PASTE, 11300}, {BTN_UNDO, 12600}, {BTN_DEL, 13900},
     {BTN_F12, 15600}, {BTN_F13, 16900}, {BTN_F14, 18300}, {BTN_F15, 19600}, {BTN_F16, 20900}, 
     {BTN_PEN, 22600}, {BTN_MOUSE, 23900}, {BTN_QUICKPOINT, 25300},
-    {BTN_SOFT, 26900}, {BTN_MED, 28200}, {BTN_FIRM, 29500},
-    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
-    NONE, NONE
+    {BTN_SOFT, 26900}, {BTN_MED, 28200}, {BTN_FIRM, 29500}
   }
 };
 const source_tablet_t intuos1_a4plus PROGMEM = {  // Intuos 1 A4 Plus
@@ -102,9 +136,7 @@ const source_tablet_t intuos1_a4plus PROGMEM = {  // Intuos 1 A4 Plus
     {BTN_CUT, 8600}, {BTN_COPY, 10000}, {BTN_PASTE, 11300}, {BTN_UNDO, 12600}, {BTN_DEL, 13900},
     {BTN_F12, 15600}, {BTN_F13, 16900}, {BTN_F14, 18300}, {BTN_F15, 19600}, {BTN_F16, 20900}, 
     {BTN_PEN, 22600}, {BTN_MOUSE, 23900}, {BTN_QUICKPOINT, 25300},
-    {BTN_SOFT, 26900}, {BTN_MED, 28200}, {BTN_FIRM, 29500},
-    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
-    NONE, NONE
+    {BTN_SOFT, 26900}, {BTN_MED, 28200}, {BTN_FIRM, 29500}
   }
 };
 const source_tablet_t intuos1_a3 PROGMEM = { // Intuos 1 A3
@@ -126,10 +158,7 @@ const tablet_t intuos2_a6 PROGMEM = {
   0x319c, 0x2968, 880, 11,
   {
     {BTN_NEW,0}, {BTN_OPEN,0}, {BTN_CLOSE, 0}, {BTN_SAVE, 0}, {BTN_PRINT, 0}, {BTN_EXIT, 0},
-    {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_PEN, 0}, {BTN_MOUSE, 0},
-    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
-    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
-    NONE, NONE, NONE, NONE, NONE
+    {BTN_CUT, 0}, {BTN_COPY, 0}, {BTN_PASTE, 0}, {BTN_PEN, 0}, {BTN_MOUSE, 0}
   }  
 };
 
@@ -141,9 +170,7 @@ const tablet_t intuos2_a5 PROGMEM = {
     {BTN_CUT, 6990}, {BTN_COPY, 8070}, {BTN_PASTE, 9150}, {BTN_UNDO, 10130}, {BTN_DEL, 11210},
     {BTN_F12, 12650}, {BTN_F13, 13700}, 
     {BTN_PEN, 13700 + 1380}, {BTN_MOUSE, 13700 + 2480},
-    {BTN_SOFT, 13700 + 3820}, {BTN_MED, 13700 + 4890}, {BTN_FIRM, 13700 + 5940},
-    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
-    NONE, NONE, NONE, NONE, NONE, NONE
+    {BTN_SOFT, 13700 + 3820}, {BTN_MED, 13700 + 4890}, {BTN_FIRM, 13700 + 5940}
   }
 };
 const tablet_t intuos2_a4 PROGMEM = {
@@ -154,9 +181,7 @@ const tablet_t intuos2_a4 PROGMEM = {
     {BTN_CUT, 8600}, {BTN_COPY, 10000}, {BTN_PASTE, 11300}, {BTN_UNDO, 12600}, {BTN_DEL, 13900},
     {BTN_F12, 15600}, {BTN_F13, 16900}, {BTN_F14, 18300}, {BTN_F15, 19600}, {BTN_F16, 20900}, 
     {BTN_PEN, 22600}, {BTN_MOUSE, 23900}, {BTN_QUICKPOINT, 25300},
-    {BTN_SOFT, 26900}, {BTN_MED, 28200}, {BTN_FIRM, 29500},
-    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
-    NONE, NONE
+    {BTN_SOFT, 26900}, {BTN_MED, 28200}, {BTN_FIRM, 29500}
   }
 };
 const tablet_t intuos2_a4plus PROGMEM = {
@@ -167,9 +192,7 @@ const tablet_t intuos2_a4plus PROGMEM = {
     {BTN_CUT, 8600}, {BTN_COPY, 10000}, {BTN_PASTE, 11300}, {BTN_UNDO, 12600}, {BTN_DEL, 13900},
     {BTN_F12, 15600}, {BTN_F13, 16900}, {BTN_F14, 18300}, {BTN_F15, 19600}, {BTN_F16, 20900}, 
     {BTN_PEN, 22600}, {BTN_MOUSE, 23900}, {BTN_QUICKPOINT, 25300},
-    {BTN_SOFT, 26900}, {BTN_MED, 28200}, {BTN_FIRM, 29500},
-    NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
-    NONE, NONE
+    {BTN_SOFT, 26900}, {BTN_MED, 28200}, {BTN_FIRM, 29500}
   }
 };
 const tablet_t intuos2_a3 PROGMEM = {
