@@ -924,7 +924,11 @@ void handle_ud_r0_message(uint8_t msg_length, volatile uint8_t * msg) {
       case STYLUS_STANDARD_INVERTED:
 	transducers[index].touching = msg[0] & 0x01;
 
-	transducers[index].pressure = msg[5] ^ 0x80;
+	// Ultrapad gives 256 levels of pressure, as opposed to intuos' 1024
+	// The top bit is, for some reason, inverted.
+	// It's a bit glitchy, so average
+	transducers[index].pressure += ((msg[5] ^ 0x80) << 1);
+	transducers[index].pressure >>= 1;
 	transducers[index].tilt_x = msg[6] - 0x40;
 	transducers[index].tilt_y = msg[7] - 0x40;
 	break;

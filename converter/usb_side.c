@@ -26,6 +26,7 @@
 #include "transforms.h"
 #include <avr/interrupt.h>
 #include <util/atomic.h>
+#include <util/delay.h>
 #include "led.h"
 #include "debug.h"
 
@@ -339,21 +340,71 @@ void populate_update(uint8_t index, wacom_report_t * packet) {
     break;
   }
 }    
+ 
 
 void synthesize_button(uint8_t index, uint8_t button, uint8_t tool_switch) {
-  // TODO Need to work this out for intuos 3+ targets
+  uint16_t transformed = 0;
+  // zero everything
+  memset(&usb_report, 0, sizeof(wacom_report_t));
+  usb_report.bytes[0] = 0x02;
 
-  transducers[index].location_y = target_tablet.button_width >> 1;
+  // Stuff that doesn't require a transform
+  usb_report.tool_index = index;
+  usb_report.proximity = 1; //transducers[index].touching;
+
+  usb_report.distance = 0x0d;
+
   // Find which button we're looking for, target-side.
   for (int i = 0; i < target_tablet.n_buttons; i++) {
     if (target_tablet.buttons[i].button == button) {
-      transducers[index].location_x = target_tablet.buttons[i].x + (target_tablet.button_width >> 1);
+      transformed = target_tablet.buttons[i].x + (target_tablet.button_width >> 1);
       break;
     }
   }
-  transducers[index].touching = 1;
-  transducers[index].buttons = tool_switch;
-  queue_message(TOOL_UPDATE, index);
-  transducers[index].buttons = 0;
-  queue_message(TOOL_UPDATE, index);
+  usb_report.x_hi = transformed >> 8;
+  usb_report.x_lo = transformed & 0xff;
+
+  transformed = 440;//target_tablet.button_width >> 1;
+  usb_report.y_hi = transformed >> 8;
+  usb_report.y_lo = transformed & 0xff;
+  
+  switch (transducers[index].type & 0xff7) {
+  case STYLUS_STANDARD:
+    // populate pen buttons
+    usb_report.bytes[1] |= (tool_switch & 0x03) << 1;
+    // And the mysterious top 2 bits
+    usb_report.bytes[1] |= 0xc0;
+    
+    // pressure reading
+    usb_report.payload[0] = 0x01;
+    usb_report.payload[1] = 0x00;
+    break;
+  case CURSOR:
+    // Identify the packet
+    usb_report.bit7 = 1;
+    usb_report.bit6 = 1;
+    usb_report.bit4 = 1;
+    // Buttons have already been modified
+    usb_report.payload[2] = transducers[index].buttons;
+    break;
+  default:
+    break;
+  }
+
+  LED_TOGGLE;
+  usb_send_packet(usb_report.bytes, 10, WACOM_INTUOS2_PEN_ENDPOINT, 25);
+  LED_TOGGLE;
+  LED_TOGGLE;
+  usb_send_packet(usb_report.bytes, 10, WACOM_INTUOS2_PEN_ENDPOINT, 25);
+  LED_TOGGLE;
+
+  // clear buttons and pressure
+  usb_report.bytes[1] &= 0xf9;
+  usb_report.payload[0] = 0x00;
+
+  LED_TOGGLE;
+  usb_send_packet(usb_report.bytes, 10, WACOM_INTUOS2_PEN_ENDPOINT, 25);
+  LED_TOGGLE;
 }
+
+
