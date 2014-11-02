@@ -364,7 +364,7 @@ void synthesize_button(uint8_t index, uint8_t button, uint8_t tool_switch) {
   usb_report.x_hi = transformed >> 8;
   usb_report.x_lo = transformed & 0xff;
 
-  transformed = 440;//target_tablet.button_width >> 1;
+  transformed = target_tablet.button_width >> 1;
   usb_report.y_hi = transformed >> 8;
   usb_report.y_lo = transformed & 0xff;
   

@@ -173,37 +173,8 @@
         (cond
          [(pregexp-match "[[:xdigit:]]*" packet 5) =>
           (lambda (x)
-            (let* ([matched-hex (car x)]
-                   [matched-val (string->number (car x) 16)]
-                   [length (string-length matched-hex)])
-              (display (format "packet ~a\n" matched-hex))
-              (let handle-packet ([index 0])
-                (if (< index length)
-                    (let ([first-byte (string->number (substring matched-hex index (+ index 2)) 16)])
-                      #;(display (format "index ~a\n" index))
-                      (cond
-                       [(= #x80 (bitwise-and first-byte #xe0))
-                        (proximity matched-val)
-                        (handle-packet (+ index 14))]
-                       [(= #xa0 (bitwise-and first-byte #xe0))
-                        (a-packet matched-val)
-                        (handle-packet (+ index 16))]
-                       [(= #xfe (bitwise-and first-byte #xfe))
-                        (prox-out)
-                        (handle-packet (+ index 4))]
-                       [(= 4 (- length index))
-                        (let ([a (* (- length index 4) 4)]
-                              [b (* (- length index) 4)])
-                          (two-packet (extract matched-val a b))
-                          (handle-packet (+ index 4)))]
-                       [else
-                        (let ([a (* (- length index 6) 4)]
-                              [b (* (- length index) 4)])
-                          (three-packet (extract matched-val a b))
-                          (handle-packet (+ index 6)))]))))))])
-        (display (format "~a ~a ~a ~a\n"
-                         (number->hex-string *x* 16) *x-shift*
-                         (number->hex-string *y* 16) *y-shift*))
+            (if (= 16 (string-length (car x)))
+                (display (format "~a\n" (number->binary-string (string->number (substring (car x) 10 12) 16) 8)))))])
         (loop (get-line stdin)))))
 
                        
