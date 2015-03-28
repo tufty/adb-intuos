@@ -39,7 +39,7 @@ typedef struct {
 } source_tablet_t;
 
 typedef struct {
-  enum { INTUOS2, INTUOS3 } tablet_family;
+  enum { INTUOS2, INTUOS3, INTUOS5 } tablet_family;
   product_id_t product_id;
   uint16_t max_x; 
   uint16_t max_y;
