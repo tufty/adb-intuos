@@ -152,8 +152,10 @@ const source_tablet_t intuos1_a3 PROGMEM = { // Intuos 1 A3
   }
 };
 
+#if defined TARGET_INTUOS_2
+
 // Intuos 2 target tablet definitions
-const tablet_t intuos2_a6 PROGMEM = {
+const tablet_t target_a6 PROGMEM = {
   INTUOS2, { 0x4100, L"XD-0405-U" },
   0x319c, 0x2968, 880, 11,
   {
@@ -162,7 +164,7 @@ const tablet_t intuos2_a6 PROGMEM = {
   }  
 };
 
-const tablet_t intuos2_a5 PROGMEM = {
+const tablet_t target_a5 PROGMEM = {
   INTUOS2, { 0x4200, L"XD-0608-U" },
   0x4f60, 0x3f70, 880, 18,
   {
@@ -173,7 +175,7 @@ const tablet_t intuos2_a5 PROGMEM = {
     {BTN_SOFT, 13700 + 3820}, {BTN_MED, 13700 + 4890}, {BTN_FIRM, 13700 + 5940}
   }
 };
-const tablet_t intuos2_a4 PROGMEM = {
+const tablet_t target_a4 PROGMEM = {
   INTUOS2, { 0x4300, L"XD-0912-U" },
   0x7710, 0x5dfc, 1100, 22,
   {
@@ -184,7 +186,7 @@ const tablet_t intuos2_a4 PROGMEM = {
     {BTN_SOFT, 26900}, {BTN_MED, 28200}, {BTN_FIRM, 29500}
   }
 };
-const tablet_t intuos2_a4plus PROGMEM = {
+const tablet_t target_a4plus PROGMEM = {
   INTUOS2, { 0x4400, L"XD-1212-U" },
   0x7710, 0x7bc0, 1100, 22,
   {
@@ -195,7 +197,7 @@ const tablet_t intuos2_a4plus PROGMEM = {
     {BTN_SOFT, 26900}, {BTN_MED, 28200}, {BTN_FIRM, 29500}
   }
 };
-const tablet_t intuos2_a3 PROGMEM = {
+const tablet_t target_a3 PROGMEM = {
   INTUOS2, { 0x4800, L"XD-1218-U" },
   0xb298, 0x7bc0, 1100, 32,
   {
@@ -207,6 +209,39 @@ const tablet_t intuos2_a3 PROGMEM = {
     {BTN_SOFT, 0}, {BTN_MED, 0}, {BTN_FIRM, 0}
   }
 };  
+
+#elif defined TARGET_INTUOS_5
+
+const tablet_t target_a6 PROGMEM = {
+  INTUOS5, { 0x0029, L"PTK-450\0\0" },
+  0x7aa8, 0x4c90, 0, 0,
+  {}
+};
+const tablet_t target_a5 PROGMEM = {
+  INTUOS5, { 0x002a, L"PTK-650\0\0" },
+  0xaf00, 0x6d60, 0, 0,
+  {}
+};
+const tablet_t target_a4 PROGMEM = {
+  INTUOS5, { 0x0028, L"PTH-850\0\0" },
+  0xfde8, 0x9e98, 0, 0,
+  {}
+};
+const tablet_t target_a4plus PROGMEM = {
+  INTUOS5, { 0x0028, L"PTH-850\0\0" },
+  0xfde8, 0x9e98, 0, 0,
+  {}
+};
+const tablet_t target_a3 PROGMEM = {
+  INTUOS5, { 0x0028, L"PTH-850\0\0" },
+  0xfde8, 0x9e98, 0, 0,
+  {}
+};
+
+#else
+#error "no target defined"
+#endif
+
 
 void adb_callback(uint8_t error_code) {
   adb_command_just_finished = 1;
@@ -253,41 +288,41 @@ void handle_wacom_r1_message (uint8_t msg_length, volatile uint8_t * msg) {
   case ULTRAPAD:
     if (source_tablet.max_x == pgm_read_word(&ultrapad_a6.max_x)) {
       source = &ultrapad_a6;
-      target = &intuos2_a6;
+      target = &target_a6;
     } else if (source_tablet.max_x == pgm_read_word(&ultrapad_a5.max_x)) {
       source = &ultrapad_a5;
-      target = &intuos2_a5;      
+      target = &target_a5;      
     } else if (source_tablet.max_x == pgm_read_word(&ultrapad_a4.max_x)) {
       if (source_tablet.max_y == pgm_read_word(&ultrapad_a4.max_y)) {
 	source = &ultrapad_a4;
-	target = &intuos2_a4;      
+	target = &target_a4;      
       } else {
 	source = &ultrapad_a4plus;
-	target = &intuos2_a4plus;      
+	target = &target_a4plus;      
       }
     } else {
       source = &ultrapad_a3;
-      target = &intuos2_a3;
+      target = &target_a3;
     }
     break;
   case INTUOS1:
     if (source_tablet.max_x == pgm_read_word(&intuos1_a6.max_x)) {
       source = &intuos1_a6;
-      target = &intuos2_a6;
+      target = &target_a6;
     } else if (source_tablet.max_x == pgm_read_word(&intuos1_a5.max_x)) {
       source = &intuos1_a5;
-      target = &intuos2_a5;      
+      target = &target_a5;      
     } else if (source_tablet.max_x == pgm_read_word(&intuos1_a4.max_x)) {
       if (source_tablet.max_y == pgm_read_word(&intuos1_a4.max_y)) {
 	source = &intuos1_a4;
-	target = &intuos2_a4;      
+	target = &target_a4;      
       } else {
 	source = &intuos1_a4plus;
-	target = &intuos2_a4plus;      
+	target = &target_a4plus;      
       }
     } else {
       source = &intuos1_a3;
-      target = &intuos2_a3;
+      target = &target_a3;
     }
     break;
   default:
