@@ -46,7 +46,9 @@ protocol to the tablet, converting data formats as necessary.  This allows use o
 
 Intuos 2 was chosen because it's the last range of tablets supporting dual-track.  
 Unfortunately, this restricts the host computer to using the v6.20 driver from Wacom, and
-therefore may preclude use on Windows 8.
+therefore may preclude use on Windows 8.  It definitely precludes use on OSX 10.9+
+without specifically allowing unsigned drivers (and even then, the prefs pane simply
+won't work).
 
 What's supported
 ----------------
