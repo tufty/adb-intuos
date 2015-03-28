@@ -71,6 +71,7 @@ FORMAT = ihex
 
 # Target file name (without extension).
 TARGET = intuos_converter
+EMULATED_TABLET = INTUOS_2
 
 
 # Object files directory
@@ -126,7 +127,7 @@ CSTANDARD = -std=gnu99
 
 
 # Place -D or -U options here for C sources
-CDEFS = -DF_CPU=$(F_CPU)UL
+CDEFS = -DF_CPU=$(F_CPU)UL -DTARGET_$(EMULATED_TABLET)
 
 
 # Place -D or -U options here for ASM sources
