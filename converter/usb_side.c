@@ -30,6 +30,9 @@
 #include "led.h"
 #include "debug.h"
 
+
+#if defined TARGET_INTUOS_2
+
 // Tablet device descriptor
 // Pre-set up with the stuff we already know
 uint8_t device_descriptor[18] = {
@@ -173,6 +176,241 @@ const usb_string_t string0 =      { 0x04, 0x03, { 0x0409 } };
 const usb_string_t string1 =      { 0x0c, 0x03, L"WACOM" }; //0x5700, 0x4100, 0x4300, 0x4f00, 0x4d00 };
 usb_string_t string2 =      { 0x14, 0x03, L"XD-XXXX-U" };
 const usb_string_t empty_string = { 0x04, 0x03, L"?" };
+
+#elif defined TARGET_INTUOS_5
+
+// Tablet device descriptor
+// Pre-set up with the stuff we already know
+uint8_t device_descriptor[18] = {
+  0x12,		// bLength
+  0x1,		// bDescriptorType
+  0x0,0x2,	// bcdUSB - the Graphire3 is set at 1.1 (0x110) -- hope that is not a problem
+  0x0,		// bDeviceClass
+  0x0,		// bDeviceSubClass
+  0x0,		// bDeviceProtocol
+  0x10,		// bMaxPacketSize0 for endpoint 0
+  0x6a,0x5,	// vendor id - WACOM Co., Ltd.
+  0x00,0x0,     // product id - Set up on the fly
+  0x07,0x1,	// bcdDevice - "version number" of the Wacom 
+  0x1,		// iManufacturer
+  0x2,		// iProduct
+  0x0,		// iSerialNumber
+  0x1		// bNumConfigurations
+};
+
+// Config and HID report descriptors
+// Ripped direct from Bernard's Intuos 5 descriptors.
+// These are static
+const uint8_t config_descriptor[59] = {
+  0x9,		// bLength - USB spec 9.6.3, page 264-266, Table 9-10
+  0x2,		// bDescriptorType;
+  0x3b,0x0,     // wTotalLength (9+9+9+7)
+  0x2,		// bNumInterfaces
+  0x1,		// bConfigurationValue
+  0x0,		// iConfiguration
+  0x80,		// bmAttributes
+  0x4b,		// bMaxPower (mA/2) 150mA
+
+  0x9,		// bLength - interface descriptor, USB spec 9.6.5, page 267-269, Table 9-12
+  0x4,		// bDescriptorType
+  0x0,		// bInterfaceNumber
+  0x0,		// bAlternateSetting
+  0x1,		// bNumEndpoints
+  0x3,		// bInterfaceClass (0x03 = HID)
+  0x1,		// bInterfaceSubClass (0x01 = Boot)
+  0x2,		// bInterfaceProtocol (0x02 = Mouse)
+  0x0,		// iInterface
+
+  0x9,		// bLength - HID interface descriptor, HID 1.11 spec, section 6.2.1
+  0x21,		// bDescriptorType
+  0x10,0x1,     // bcdHID 
+  0x0,		// bCountryCode
+  0x1,		// bNumDescriptors
+  0x22,		// bDescriptorType
+  0xf3,0x0,     // wDescriptorLength  HIDREPORTDESC Length (Graphire3 is 0x0062)
+
+  0x7,		// bLength - endpoint descriptor, USB spec 9.6.6, page 269-271, Table 9-13
+  0x5,		// bDescriptorType
+  0x83,		// bEndpointAddress  3 | 0x80
+  0x3,		// bmAttributes (0x03=intr)
+  0x10,0x0,     // wMaxPacketSize
+  0x1,          // bInterval max number of ms between transmit packets
+  0x9,		// bLength - interface descriptor, USB spec 9.6.5, page 267-269, Table 9-12
+  0x4,		// bDescriptorType
+  0x1,		// bInterfaceNumber
+  0x0,		// bAlternateSetting
+  0x1,		// bNumEndpoints
+  0x3,		// bInterfaceClass (0x03 = HID)
+  0x0,		// bInterfaceSubClass (0x01 = Boot)
+  0x0,		// bInterfaceProtocol (0x02 = Mouse)
+  0x0,		// iInterface
+  0x9,		// bLength - HID interface descriptor, HID 1.11 spec, section 6.2.1
+  0x21,		// bDescriptorType
+  0x10,0x1,	// bcdHID
+  0x0,		// bCountryCode
+  0x1,		// bNumDescriptors
+  0x22,		// bDescriptorType
+  0x17,0x0,	// wDescriptorLength  HIDREPORTDESC Length (Graphire3 is 0x0062)
+  0x7,		// bLength - endpoint descriptor, USB spec 9.6.6, page 269-271, Table 9-13
+  0x5,		// bDescriptorType
+  0x82,		// bEndpointAddress  2 | 0x80
+  0x3,		// bmAttributes (0x03=intr)
+  0x40,0x0,	// wMaxPacketSize
+  0x2		// bInterval max number of ms between transmit packets
+}; 
+
+// Decoded using http://eleccelerator.com/usbdescreqparser/
+
+const uint8_t hid_report_descriptor[243] = {
+  0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
+  0x09, 0x02,        // Usage (Mouse)
+  0xA1, 0x01,        // Collection (Application)
+  0x85, 0x01,        //   Report ID (1)
+  0x09, 0x01,        //   Usage (Pointer)
+  0xA1, 0x00,        //   Collection (Physical)
+  0x05, 0x09,        //     Usage Page (Button)
+  0x19, 0x01,        //     Usage Minimum (0x01)
+  0x29, 0x03,        //     Usage Maximum (0x03)
+  0x15, 0x00,        //     Logical Minimum (0)
+  0x25, 0x01,        //     Logical Maximum (1)
+  0x95, 0x03,        //     Report Count (3)
+  0x75, 0x01,        //     Report Size (1)
+  0x81, 0x02,        //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+  0x95, 0x05,        //     Report Count (5)
+  0x81, 0x03,        //     Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+  0x05, 0x01,        //     Usage Page (Generic Desktop Ctrls)
+  0x09, 0x30,        //     Usage (X)
+  0x09, 0x31,        //     Usage (Y)
+  0x09, 0x38,        //     Usage (Wheel)
+  0x15, 0x81,        //     Logical Minimum (129)
+  0x25, 0x7F,        //     Logical Maximum (127)
+  0x75, 0x08,        //     Report Size (8)
+  0x95, 0x03,        //     Report Count (3)
+  0x81, 0x06,        //     Input (Data,Var,Rel,No Wrap,Linear,Preferred State,No Null Position)
+  0xC0,              //   End Collection
+  0xC0,              // End Collection
+  0x05, 0x0D,        // Usage Page (Digitizer)
+  0x09, 0x01,        // Usage (Digitizer)
+  0xA1, 0x01,        // Collection (Application)
+  0x85, 0x02,        //   Report ID (2)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x75, 0x08,        //   Report Size (8)
+  0x96, 0x09, 0x00,  //   Report Count (9)
+  0x15, 0x00,        //   Logical Minimum (0)
+  0x26, 0xFF, 0x00,  //   Logical Maximum (255)
+  0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+  0x85, 0x03,        //   Report ID (3)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x75, 0x08,        //   Report Size (8)
+  0x96, 0x09, 0x00,  //   Report Count (9)
+  0x15, 0x00,        //   Logical Minimum (0)
+  0x26, 0xFF, 0x00,  //   Logical Maximum (255)
+  0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+  0x85, 0xC0,        //   Report ID (192)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x75, 0x08,        //   Report Size (8)
+  0x96, 0x09, 0x00,  //   Report Count (9)
+  0x15, 0x00,        //   Logical Minimum (0)
+  0x26, 0xFF, 0x00,  //   Logical Maximum (255)
+  0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+  0x85, 0x02,        //   Report ID (2)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x95, 0x01,        //   Report Count (1)
+  0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+  0x85, 0x03,        //   Report ID (3)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x95, 0x09,        //   Report Count (9)
+  0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+  0x85, 0x05,        //   Report ID (5)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x95, 0x08,        //   Report Count (8)
+  0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+  0x85, 0x07,        //   Report ID (7)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x95, 0x0F,        //   Report Count (15)
+  0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+  0x85, 0x08,        //   Report ID (8)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x95, 0x04,        //   Report Count (4)
+  0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+  0x85, 0x0A,        //   Report ID (10)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x95, 0x02,        //   Report Count (2)
+  0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+  0x85, 0x0B,        //   Report ID (11)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x95, 0x01,        //   Report Count (1)
+  0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+  0x85, 0x20,        //   Report ID (32)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x95, 0x08,        //   Report Count (8)
+  0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+  0x85, 0x04,        //   Report ID (4)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x95, 0x01,        //   Report Count (1)
+  0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+  0x85, 0x0D,        //   Report ID (13)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x95, 0x01,        //   Report Count (1)
+  0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+  0x85, 0xCC,        //   Report ID (204)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x95, 0x02,        //   Report Count (2)
+  0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+  0x85, 0x30,        //   Report ID (48)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x95, 0x1F,        //   Report Count (31)
+  0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+  0x85, 0x31,        //   Report ID (49)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x95, 0x04,        //   Report Count (4)
+  0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+  0x85, 0x15,        //   Report ID (21)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x95, 0x0A,        //   Report Count (10)
+  0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+  0x85, 0x14,        //   Report ID (20)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x95, 0x0F,        //   Report Count (15)
+  0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+  0x85, 0x40,        //   Report ID (64)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x95, 0x02,        //   Report Count (2)
+  0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+  0x85, 0xDD,        //   Report ID (221)
+  0x09, 0x00,        //   Usage (Undefined)
+  0x95, 0x01,        //   Report Count (1)
+  0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+  0xC0,              // End Collection
+  // 243 bytes
+
+};
+
+const uint8_t hid_report_descriptor2[23] = {
+  0x06, 0x00, 0xFF,  // Usage Page (Vendor Defined 0xFF00)
+  0x09, 0x01,        // Usage (0x01)
+  0xA1, 0x01,        // Collection (Application)
+  0x85, 0x02,        //   Report ID (2)
+  0x09, 0x01,        //   Usage (0x01)
+  0x15, 0x00,        //   Logical Minimum (0)
+  0x26, 0xFF, 0x00,  //   Logical Maximum (255)
+  0x75, 0x08,        //   Report Size (8)
+  0x95, 0x3F,        //   Report Count (63)
+  0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+  0xC0,              // End Collection
+  // 23 bytes
+};
+
+
+
+const usb_string_t string0 =      { 0x04, 0x03, { 0x0409 } };
+const usb_string_t string1 =      { 0x0c, 0x03, L"WACOM" }; //0x5700, 0x4100, 0x4300, 0x4f00, 0x4d00 };
+usb_string_t string2 =      { 0x10, 0x03, L"PTHXXXX" };
+const usb_string_t empty_string = { 0x04, 0x03, L"?" };
+
+#else
+#error "no target defined"
+#endif
 
 // Do product identification
 //

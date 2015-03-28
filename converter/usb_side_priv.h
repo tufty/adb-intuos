@@ -34,8 +34,14 @@ typedef struct {
 
 // Need this to tell the HID stack what we are, and let the Wacom driver hook up
 extern uint8_t device_descriptor[18];
+
+#if defined TARGET_INTUOS_2
 const extern uint8_t config_descriptor[34];
 const extern uint8_t hid_report_descriptor[154];
+#elif defined TARGET_INTUOS_5
+const extern uint8_t config_descriptor[59];
+const extern uint8_t hid_report_descriptor[243];
+#endif
 
 const extern usb_string_t string0;
 const extern usb_string_t string1;

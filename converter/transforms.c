@@ -24,15 +24,16 @@
 #include "transforms.h"
 #include "shared_state.h"
 
-#ifdef TARGET_INTUOS_2
-
 // Transform a location in source form to target form
-// Effectively a null op for intuos 2 target
+// Effectively a null op for intuos 1 source, intuos 2 target
 uint16_t x_to_x(uint16_t raw) {
   uint32_t transformed;
   switch (source_tablet.tablet_family) {
   case CALCOMP:
   case ULTRAPAD:
+#if defined TARGET_INTUOS_5
+  case INTUOS1:
+#endif
     // Rescale - Calcomps have lower DPI, as do old ultrapads.
     transformed = raw;
     transformed *= target_tablet.max_x;
@@ -55,7 +56,9 @@ uint16_t y_to_y(uint16_t raw) {
       transformed /= source_tablet.max_y;
       return (uint16_t)transformed + target_tablet.button_width;
     case INTUOS1:
+#if defined TARGET_INTUOS_2
       return raw;
+#endif
     default:
       // Rescale dpi to dpi
       transformed = (raw * target_tablet.max_y);
@@ -87,7 +90,11 @@ uint8_t tilt_to_tilt(uint8_t raw) {
 // Transform a pressure reading in source form to target form
 // Null op for intuos 2
 uint16_t pressure_to_pressure(uint16_t raw) {
+#if defined TARGET_INTUOS_2
   return raw & 0x3ff;
+#elif defined TARGET_INTUOS_5
+  return (raw & 0x3ff) << 1;
+#endif
 }
 
 // Transform a rotation reading from source form to target form
@@ -97,5 +104,3 @@ uint16_t pressure_to_pressure(uint16_t raw) {
 uint16_t rotation_to_rotation(uint16_t raw, uint8_t sign) {
   return ((raw & 0x7ff) << 1) | sign;
 }
-
-#endif
