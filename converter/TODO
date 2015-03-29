@@ -1,0 +1,3 @@
+- Get Intuos 5 emulation working enough for the Wacom driver to recognise the tablet
+- Clean up descriptor handling, it's a mess
+- Clean up the USB code, there's a lot of duplication
