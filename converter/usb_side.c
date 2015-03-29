@@ -204,7 +204,7 @@ uint8_t device_descriptor[18] = {
 const uint8_t config_descriptor[59] = {
   0x9,		// bLength - USB spec 9.6.3, page 264-266, Table 9-10
   0x2,		// bDescriptorType;
-  0x3b,0x0,     // wTotalLength (9+9+9+7)
+  0x3b,0x0,     // wTotalLength (9+9+9+7+9+9+7)
   0x2,		// bNumInterfaces
   0x1,		// bConfigurationValue
   0x0,		// iConfiguration
@@ -235,6 +235,7 @@ const uint8_t config_descriptor[59] = {
   0x3,		// bmAttributes (0x03=intr)
   0x10,0x0,     // wMaxPacketSize
   0x1,          // bInterval max number of ms between transmit packets
+
   0x9,		// bLength - interface descriptor, USB spec 9.6.5, page 267-269, Table 9-12
   0x4,		// bDescriptorType
   0x1,		// bInterfaceNumber
@@ -244,6 +245,7 @@ const uint8_t config_descriptor[59] = {
   0x0,		// bInterfaceSubClass (0x01 = Boot)
   0x0,		// bInterfaceProtocol (0x02 = Mouse)
   0x0,		// iInterface
+
   0x9,		// bLength - HID interface descriptor, HID 1.11 spec, section 6.2.1
   0x21,		// bDescriptorType
   0x10,0x1,	// bcdHID
@@ -251,6 +253,7 @@ const uint8_t config_descriptor[59] = {
   0x1,		// bNumDescriptors
   0x22,		// bDescriptorType
   0x17,0x0,	// wDescriptorLength  HIDREPORTDESC Length (Graphire3 is 0x0062)
+
   0x7,		// bLength - endpoint descriptor, USB spec 9.6.6, page 269-271, Table 9-13
   0x5,		// bDescriptorType
   0x82,		// bEndpointAddress  2 | 0x80

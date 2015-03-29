@@ -79,7 +79,13 @@ static inline void usb_ack_out(void) {
   UEINTX = ~(1 << RXOUTI);
 }
 
+#if defined TARGET_INTUOS_2
 static uint8_t endpointSize[5] = {8, 10, 0, 0, 0};
+#elif defined TARGET_INTUOS_5
+static uint8_t endpointSize[5] = {16, 40, 0, 0, 0};
+#else
+#error "no target defined"
+#endif
 
 // initialize USB
 void usb_init(void) {
@@ -242,7 +248,7 @@ static inline uint8_t handleStandardEndpoint0() {
 	  //if(req.value_low != 0) return USBREQ_STALL;
 
 	  desc_addr = config_descriptor;
-	  desc_length = 0x22;//sizeof(config_descriptor);
+	  desc_length = sizeof(config_descriptor);
 	  //signal_error(desc_length);
 	  break;
 	case 0x21:  // ----- HID INTERFACE DESCRIPTOR -----
@@ -252,17 +258,22 @@ static inline uint8_t handleStandardEndpoint0() {
 	  return USBREQ_STALL;
 
 	case 0x22:  // ----- HID REPORT DESCRIPTOR -----
-	  if(req.value_low != 0) return USBREQ_STALL;
+	  //if(req.value_low != 0) return USBREQ_STALL;
 
-	  if(req.index_low == 0)
-	    {
-	      desc_addr = hid_report_descriptor;
-	      desc_length = sizeof(hid_report_descriptor);
-	    }
-	  else
-	    {
-	      return USBREQ_STALL;
-	    }
+	  switch (req.value_low) {
+	  case 0:
+	    desc_addr = hid_report_descriptor;
+	    desc_length = sizeof(hid_report_descriptor);
+	    break;
+#if defined TARGET_INTUOS_5
+	  case 1:
+	    desc_addr = hid_report_descriptor2;
+	    desc_length = sizeof(hid_report_descriptor2);
+	    break;
+#endif
+	  default:
+	    return USBREQ_STALL;
+	  }
 
 	  break;
 	case 0x03:  // ----- STRING DESCRIPTOR -----
@@ -303,16 +314,9 @@ static inline uint8_t handleStandardEndpoint0() {
 
       uint8_t n,i;
 
-      do
-	{
+      do {
 	  // wait for host ready for IN packet
-	  do
-	    {
-	      i = UEINTX;
-	    } while (!(i & ((1 << TXINI) | (1 << RXOUTI))));
-
-	  if (i & (1 << RXOUTI))
-	    return USBREQ_ABORT;
+	  usb_wait_in_ready();
 
 	  // send IN packet
 	  if(len < endpointSize[0])
@@ -320,14 +324,13 @@ static inline uint8_t handleStandardEndpoint0() {
 	  else
 	    n = endpointSize[0];
 
-	  for (i = n; i; i--)
-	    {
-	      UEDATX = *desc_addr++;
-	    }
-
+	  for (i = n; i; i--) {
+	    UEDATX = *desc_addr++;
+	  }
+	  
 	  len -= n;
 	  usb_send_in();
-	} while (len || n == endpointSize[0]);
+	} while (len > 0);// && usb_wait_in_ready_or_abort());//|| n == endpointSize[0]);
 
       return USBREQ_SUCCESS;
     }

@@ -41,6 +41,7 @@ const extern uint8_t hid_report_descriptor[154];
 #elif defined TARGET_INTUOS_5
 const extern uint8_t config_descriptor[59];
 const extern uint8_t hid_report_descriptor[243];
+const extern uint8_t hid_report_descriptor2[23];
 #endif
 
 const extern usb_string_t string0;
