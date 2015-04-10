@@ -448,9 +448,9 @@ static inline uint8_t handleStandardEndpoint0() {
 
 // note: called within an interrupt
 static inline uint8_t handleHidEndpoint0() {
-  if (req.wIndex != RAWHID_INTERFACE) {
-    return USBREQ_STALL;
-  }
+  //  if (req.wIndex != RAWHID_INTERFACE) {
+  //  return USBREQ_STALL;
+  //}
 
   switch (req.bRequest) {
   case HID_GET_REPORT:
@@ -576,15 +576,15 @@ static inline uint8_t handleHidEndpoint0() {
 	    // Intuos2 driver sends 0x09 0x00 when initializing, dunno what this is about.
 	    // Some feature I suppose.
 	    break;
-	  case 21: // <- is this 0x21 or decimal 21 ??
-	    // Bamboo driver sends 0x21 0x01 when initializing, dunno what this is about.
-	    // Some feature I suppose.
-	    break;
 	  case 13: // 0x0D
 	    // intuos5 is sending 0x0D 0x04
 	    break;
 	  case 32: // 0x20
 	    // Intuos5 is sending at init time:  20 14 01 00 00 00 00 00 00
+	    break;
+	  case 33: // 0x21
+	    // Bamboo driver sends 0x21 0x01 when initializing, dunno what this is about.
+	    // Some feature I suppose.
 	    break;
 	  }
 	  // ignore incoming bytes
