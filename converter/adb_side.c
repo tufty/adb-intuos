@@ -213,27 +213,27 @@ const tablet_t target_a3 PROGMEM = {
 #elif defined TARGET_INTUOS_5
 
 const tablet_t target_a6 PROGMEM = {
-  INTUOS5, { 0x0029, L"PTK-450\0\0" },
+  INTUOS5, { 0x2900, L"PTK-450\0\0" },
   0x7aa8, 0x4c90, 0, 0,
   {}
 };
 const tablet_t target_a5 PROGMEM = {
-  INTUOS5, { 0x002a, L"PTK-650\0\0" },
+  INTUOS5, { 0x2a00, L"PTK-650\0\0" },
   0xaf00, 0x6d60, 0, 0,
   {}
 };
 const tablet_t target_a4 PROGMEM = {
-  INTUOS5, { 0x0028, L"PTH-850\0\0" },
+  INTUOS5, { 0x2800, L"PTH-850\0\0" },
   0xfde8, 0x9e98, 0, 0,
   {}
 };
 const tablet_t target_a4plus PROGMEM = {
-  INTUOS5, { 0x0028, L"PTH-850\0\0" },
+  INTUOS5, { 0x2800, L"PTH-850\0\0" },
   0xfde8, 0x9e98, 0, 0,
   {}
 };
 const tablet_t target_a3 PROGMEM = {
-  INTUOS5, { 0x0028, L"PTH-850\0\0" },
+  INTUOS5, { 0x2800, L"PTH-850\0\0" },
   0xfde8, 0x9e98, 0, 0,
   {}
 };

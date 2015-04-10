@@ -71,7 +71,7 @@ FORMAT = ihex
 
 # Target file name (without extension).
 TARGET = intuos_converter
-EMULATED_TABLET = INTUOS_2
+EMULATED_TABLET = INTUOS_5
 
 
 # Object files directory

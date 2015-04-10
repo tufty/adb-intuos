@@ -628,11 +628,11 @@ static inline uint8_t handleEnpoint0() {
   UEINTX = ~((1 << RXSTPI) | (1 << RXOUTI) | (1 << TXINI));
 
   switch (req.bmRequestType) {
-  default:
-    return handleStandardEndpoint0();
   case USB_REQUESTTYPE_HID_H2D:
   case USB_REQUESTTYPE_HID_D2H:
     return handleHidEndpoint0();
+  default:
+    return handleStandardEndpoint0();
   }
 }
 
